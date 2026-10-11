@@ -15,6 +15,7 @@
  */
 import type { ChemicalId, DriveId, DriveState, TickResult } from '../contracts/types';
 import type { IBiochem } from '../contracts/ibiochem';
+import type { PhenotypeConfig } from '../contracts/igenome';
 import { listDriveDefs, type DriveDef } from './driveTable';
 import { listChemicalDefs, type ChemicalDef } from './chemicals';
 import { CHEMICAL_REACTIONS, couplingRate, reactionTransfer } from './reactions';
@@ -24,6 +25,14 @@ export interface BiochemEngineOptions {
   initialChemicals?: Partial<Record<ChemicalId, number>>;
   /** Niveles iniciales de drives; el resto arranca en 0. */
   initialDrives?: Partial<Record<DriveId, number>>;
+  /**
+   * Capa de configuración del genoma (Fase genoma): deltas relativos sobre
+   * `decayPerSecond` por drive (ver src/contracts/igenome.ts). El motor solo
+   * usa `driveDecayDeltas`; la sección `brain` la consume quien construya el
+   * cerebro. SIN phenotype (o con deltas a 0) el comportamiento es idéntico
+   * al de Fase 0 — no cambia driveTable.ts, solo este snapshot en construcción.
+   */
+  phenotype?: PhenotypeConfig;
 }
 
 interface DriveSlot {
@@ -62,6 +71,21 @@ export class BiochemEngine implements IBiochem {
     }
     // Validar que las opciones referencian entidades registradas.
     for (const id of Object.keys(options.initialDrives ?? {})) this.getDriveDefOrThrow(id);
+    // Capa phenotype: deltas relativos de decayPerSecond por drive.
+    // decayEfectivo = decayPerSecond · clamp(1 + delta, 0, 4). Delta 0 ⇒ idéntico.
+    if (options.phenotype) {
+      for (const [id, delta] of Object.entries(options.phenotype.driveDecayDeltas ?? {})) {
+        if (delta === undefined) continue;
+        if (!Number.isFinite(delta)) {
+          throw new RangeError(`Phenotype: delta no finito para drive ${id}: ${delta}`);
+        }
+        const slot = this.driveSlots.get(id);
+        if (!slot) throw new RangeError(`Phenotype: drive no registrado: ${id}`);
+        const multiplier = Math.min(4, Math.max(0, 1 + delta));
+        // Snapshot del def con el decay ajustado (driveTable queda intacto).
+        slot.def = { ...slot.def, decayPerSecond: slot.def.decayPerSecond * multiplier };
+      }
+    }
     for (const id of Object.keys(options.initialChemicals ?? {})) {
       if (!this.chemicalDefs.has(id)) throw new RangeError(`Químico no registrado: ${id}`);
     }
