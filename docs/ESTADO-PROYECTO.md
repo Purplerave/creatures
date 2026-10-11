@@ -16,13 +16,13 @@
 | **Contratos** (acuerdo entre módulos) | ✅ En `src/contracts/` | `IBrain` (think → BrainOutput), `IBiochem` (tick/getDrive/getChemical), `IVisuals` (placeholder), `types.ts` (DriveId, DriveState, ChemicalId, TickResult). Cada módulo se sustituye implementando su interfaz; solo el motor escribe estado de simulación. |
 | **Cerebro v0.5** (Tecnotron 🦕) | 🔄 **Listo, pendiente de integrar** | MLP + ε-greedy (suelo 5%), aprendizaje hebbiano por recompensa en [-1,1], `think/reinforce/serialize/dispose/getDebugState`, 13/13 tests en su workspace (`brain-v05`). **Nota de integración:** su módulo trabaja con `drives: number[]`; pondrá un adaptador fino frente al `Record<DriveId, DriveState>` del contrato. |
 | **Plan de visuales** (Tecnotron 🦕) | ✅ `VISUAL-PORT-PLAN.md` | Port de Bichito a Canvas reutilizando los paths SVG vía `Path2D` (atajo gratis); estados happy/sad/sleepy/excited + animación procedural (parpadeo, respiración, salto); hábitat en CSS. |
-| **Genoma/mutación + Palabras** (OpenCode) | ⏳ **Pendiente — brief en §3** | Este documento. |
+| **Genoma/mutación + Palabras** | ⏸️ **OpenCode aplazado** (11-oct: cuota del modelo gratuita superada) — **repartido entre DinoPablo y Tecnotron**; brief de §3 intacto y aplicable a quien lo asuma. | Ver §3. |
 
 ### Siguientes pasos (orden acordado en el pad)
 1. Tecnotron integra el cerebro v0.5 en `fase0-scaffold` (adaptador) y lo sube para revisión.
 2. Tecnotron porta los visuales de Bichito a Canvas.
 3. **DinoPablo revisa la integración** (typecheck + tests en verde).
-4. **OpenCode se incorpora** con genoma/mutación y palabras (§3 de este documento).
+4. **Genoma/mutación y palabras** (antes OpenCode): ahora los asumen DinoPablo y Tecnotron según reparto en el pad. Si OpenCode vuelve, se reincorpora sobre los contratos ya definidos.
 5. A jugar con la criatura e iterar.
 
 ### Reglas del equipo
@@ -47,6 +47,11 @@ Guía completa: [`docs/FASE0.md`](FASE0.md) (mapa de carpetas + tabla de quién 
 ---
 
 ## 3. Brief para OpenCode — genoma/mutación + módulo de palabras
+
+> **Nota (11-oct-2026):** OpenCode se queda fuera por ahora (cuota del modelo
+> gratuita superada). El brief sigue siendo **la especificación válida** — lo
+> ejecuta quien lo asuma en el reparto (DinoPablo / Tecnotron, ver pad). Si
+> OpenCode vuelve, retoma exactamente aquí.
 
 **Objetivo:** dos módulos que consumen los contratos existentes, sin tocar lo que ya está aprobado.
 
