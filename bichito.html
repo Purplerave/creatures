@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="data:," />
+  <title>Bichito</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #ecf2ef;
+      --surface: #f9fbfa;
+      --surface-2: #e2eae6;
+      --ink: #14221f;
+      --muted: #53635f;
+      --line: #bccbc6;
+      --teal: #087f78;
+      --teal-dark: #075f5a;
+      --mint: #86d9c5;
+      --amber: #e8a53b;
+      --coral: #df6d52;
+      --shadow: 0 20px 55px rgba(22, 54, 47, .13);
+      --room: radial-gradient(circle at 48% 58%, #e7f1ec 0 16%, #ceddd7 56%, #b8cbc4 100%);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0c1514;
+        --surface: #121f1d;
+        --surface-2: #192a27;
+        --ink: #edf6f3;
+        --muted: #a9bbb6;
+        --line: #34504a;
+        --teal: #4ac6b9;
+        --teal-dark: #76dacd;
+        --mint: #62bca8;
+        --amber: #f0b951;
+        --coral: #f08065;
+        --shadow: 0 24px 60px rgba(0,0,0,.32);
+        --room: radial-gradient(circle at 48% 58%, #1d322e 0 16%, #142521 56%, #0d1917 100%);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { min-width: 320px; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "DM Sans", sans-serif;
+      line-height: 1.45;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    main {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: clamp(14px, 2vw, 28px);
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(340px, 1.1fr) minmax(330px, .9fr);
+      grid-template-rows: auto 1fr;
+      gap: 18px;
+    }
+    .intro {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 4px 2px 2px;
+    }
+    .intro h1 {
+      font-size: clamp(28px, 4vw, 54px);
+      line-height: .98;
+      letter-spacing: -.05em;
+      margin: 0;
+      max-width: 700px;
+    }
+    .intro p {
+      max-width: 520px;
+      color: var(--muted);
+      margin: 0;
+      font-size: clamp(14px, 1.5vw, 17px);
+    }
+    .habitat {
+      background: var(--room);
+      border: 1px solid var(--line);
+      min-height: 790px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 28px 12px 28px 12px;
+      box-shadow: var(--shadow);
+      isolation: isolate;
+      transition: background .35s;
+    }
+    .habitat.light-bright {
+      background: radial-gradient(circle at 48% 52%, #fff8c8 0 12%, #dceadd 50%, #b8cbc4 100%);
+    }
+    @media (prefers-color-scheme: dark) {
+      .habitat.light-bright { background: radial-gradient(circle at 48% 52%, #75672b 0 9%, #263a30 42%, #0d1917 100%); }
+    }
+    .habitat::before {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 33%;
+      background: linear-gradient(165deg, transparent 0 12%, color-mix(in srgb, var(--teal) 12%, transparent) 12.3% 13%, transparent 13.3%),
+                  linear-gradient(to bottom, color-mix(in srgb, var(--surface) 35%, transparent), color-mix(in srgb, var(--surface-2) 75%, transparent));
+      z-index: -1;
+    }
+    .habitat-top {
+      position: absolute;
+      z-index: 3;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .identity { display: grid; gap: 3px; }
+    .identity strong { font-size: 20px; letter-spacing: -.02em; }
+    .mono { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); }
+    .status-badge {
+      border: 1px solid color-mix(in srgb, var(--teal) 45%, var(--line));
+      color: var(--teal-dark);
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .room-lights {
+      position: absolute;
+      inset: 0;
+      opacity: .45;
+      background-image: radial-gradient(circle, var(--teal) 0 2px, transparent 2.5px);
+      background-size: 46px 46px;
+      mask-image: linear-gradient(to bottom, black, transparent 55%);
+      z-index: -1;
+    }
+    .creature-wrap {
+      position: absolute;
+      inset: 104px 20px 290px;
+      display: grid;
+      place-items: center;
+    }
+    .speech {
+      position: absolute;
+      top: 12%;
+      right: 4%;
+      z-index: 5;
+      max-width: min(220px, 50%);
+      padding: 11px 14px;
+      border-radius: 18px 18px 4px 18px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: 0 8px 25px rgba(12,44,37,.14);
+      font-weight: 600;
+      font-size: 14px;
+      transition: opacity .2s, transform .2s;
+    }
+    .creature {
+      width: min(420px, 86%);
+      overflow: visible;
+      filter: drop-shadow(0 28px 22px rgba(17, 54, 46, .22));
+      animation: breathe 3.6s ease-in-out infinite;
+      transform-origin: 50% 80%;
+    }
+    .creature .eye-lid { transition: transform .18s; transform-origin: center; }
+    .creature.happy .mouth-happy { display: block; }
+    .creature.happy .mouth-neutral { display: none; }
+    .creature.sad .mouth-neutral { transform: rotate(180deg) translateY(-9px); transform-origin: center; }
+    .creature.excited { animation: hop .5s cubic-bezier(.2,.8,.3,1) 2; }
+    .creature.sleepy .eye-lid { transform: scaleY(.18); }
+    .antenna-glow { animation: pulse 1.9s ease-in-out infinite; }
+    @keyframes breathe { 0%,100%{ transform: translateY(0) scale(1)} 50%{ transform: translateY(-5px) scale(1.012)} }
+    @keyframes hop { 0%,100%{transform:translateY(0) rotate(0)} 45%{transform:translateY(-28px) rotate(-2deg)} }
+    @keyframes pulse { 50%{ opacity:.45; transform:scale(.76); transform-origin:center;} }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
+    }
+    .stimulus-zone {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 205px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      z-index: 4;
+    }
+    .object {
+      min-width: 0;
+      min-height: 70px;
+      border: 1px solid color-mix(in srgb, var(--teal) 32%, var(--line));
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      border-radius: 9px 18px 9px 18px;
+      padding: 8px 10px;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      text-align: left;
+      box-shadow: 0 8px 20px rgba(18,48,42,.08);
+    }
+    .object:hover { border-color: var(--teal); background: var(--surface); }
+    .object:active { transform: translateY(1px); }
+    .object.active { animation: objectPulse .55s ease-out; }
+    @keyframes objectPulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--teal) 18%, transparent); } }
+    .object svg { width: 32px; height: 32px; stroke: var(--teal-dark); fill: none; stroke-width: 1.7; }
+    .object strong, .object small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .object strong { font-size: 12px; }
+    .object small { margin-top: 2px; font-family: "IBM Plex Mono", monospace; font-size: 9px; color: var(--muted); }
+    .needs {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 104px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      z-index: 3;
+    }
+    .need {
+      padding: 9px 10px 10px;
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .need-line { display: flex; justify-content: space-between; font-size: 11px; gap: 5px; }
+    .need-line strong { font-family: "IBM Plex Mono", monospace; font-size: 10px; }
+    .bar { height: 5px; margin-top: 7px; border-radius: 5px; background: var(--surface-2); overflow: hidden; }
+    .bar > i { display:block; height:100%; width:50%; background:var(--teal); border-radius:inherit; transition: width .3s; }
+    .actions {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      z-index: 4;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .action {
+      min-height: 68px;
+      padding: 8px 6px;
+      border: 1px solid var(--line);
+      border-radius: 16px 6px 16px 6px;
+      background: var(--surface);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      font-weight: 700;
+      box-shadow: 0 5px 12px rgba(18,48,42,.06);
+    }
+    .action svg { width: 22px; height: 22px; stroke: var(--teal-dark); fill: none; stroke-width: 1.8; }
+    .action span { font-size: 12px; }
+    .action:hover { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 8%, var(--surface)); }
+    .action:active { transform: translateY(1px); }
+    .lab {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 1fr;
+      align-content: start;
+      gap: 14px;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px 24px 12px 24px;
+      padding: 17px;
+      min-width: 0;
+    }
+    .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:13px; }
+    .panel h2 { margin:0; font-size:17px; letter-spacing:-.02em; }
+    .panel p { margin:3px 0 0; color:var(--muted); font-size:12px; }
+    .net-stat { font-family:"IBM Plex Mono", monospace; font-size:10px; color:var(--teal-dark); text-align:right; }
+    #brain { width:100%; height:210px; display:block; border-radius:8px 18px 8px 18px; background:var(--surface-2); }
+    .thought {
+      display:flex;
+      justify-content:space-between;
+      gap:9px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-top:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .thought strong { color:var(--ink); }
+    .dna-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px 18px; }
+    .gene { min-width:0; }
+    .gene-top { display:flex; justify-content:space-between; gap:10px; font-size:12px; margin-bottom:4px; }
+    .gene-top strong { color:var(--teal-dark); font-family:"IBM Plex Mono", monospace; font-size:10px; }
+    .dna-sequence {
+      margin-top:14px;
+      padding:9px 10px;
+      border:1px dashed var(--line);
+      border-radius:8px;
+      font-family:"IBM Plex Mono", monospace;
+      color:var(--muted);
+      font-size:10px;
+      letter-spacing:.12em;
+      overflow-wrap:anywhere;
+    }
+    .log { display:grid; gap:0; max-height:172px; overflow:auto; }
+    .log-item {
+      display:grid;
+      grid-template-columns:60px 1fr;
+      gap:10px;
+      padding:9px 0;
+      border-bottom:1px solid var(--line);
+      font-size:12px;
+    }
+    .log-item:last-child { border:0; }
+    .log-item time { font-family:"IBM Plex Mono", monospace; color:var(--muted); font-size:10px; padding-top:2px; }
+    .log-item strong { display:block; margin-bottom:1px; }
+    .language-workbench { display:grid; gap:12px; }
+    .word-entry { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:8px; }
+    .word-entry input {
+      min-width:0;
+      border:1px solid var(--line);
+      background:var(--surface-2);
+      color:var(--ink);
+      border-radius:8px;
+      padding:10px 11px;
+      outline:none;
+    }
+    .word-entry input:focus { border-color:var(--teal); box-shadow:0 0 0 3px color-mix(in srgb, var(--teal) 16%, transparent); }
+    .target-buttons { display:grid; grid-template-columns:repeat(3, 1fr); gap:7px; }
+    .target-btn {
+      border:1px solid var(--line);
+      background:var(--surface);
+      border-radius:7px 13px 7px 13px;
+      padding:9px 7px;
+      cursor:pointer;
+      font-size:11px;
+      font-weight:700;
+    }
+    .target-btn:hover { border-color:var(--teal); }
+    .vocabulary { display:grid; gap:7px; }
+    .vocab-empty { color:var(--muted); font-size:12px; padding:3px 0; }
+    .vocab-item { display:grid; grid-template-columns:minmax(70px,.7fr) minmax(90px,1fr) 42px; align-items:center; gap:9px; font-size:11px; }
+    .vocab-word { font-weight:700; overflow-wrap:anywhere; }
+    .vocab-target { color:var(--muted); }
+    .vocab-meter { height:5px; border-radius:5px; background:var(--surface-2); overflow:hidden; margin-top:4px; }
+    .vocab-meter i { display:block; height:100%; background:var(--amber); }
+    .vocab-pct { font-family:"IBM Plex Mono", monospace; font-size:9px; color:var(--teal-dark); text-align:right; }
+    .footer-tools { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    .memory-note { font-size:11px; color:var(--muted); max-width:320px; }
+    .tool-buttons { display:flex; gap:8px; flex-wrap:wrap; }
+    .small-btn, .file-label {
+      border:1px solid var(--line);
+      background:var(--surface);
+      border-radius:8px;
+      padding:8px 10px;
+      font-size:11px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .small-btn:hover, .file-label:hover { border-color:var(--teal); }
+    .file-label input { display:none; }
+    .toast {
+      position:fixed;
+      left:50%; bottom:18px;
+      transform:translate(-50%, 20px);
+      background:var(--ink);
+      color:var(--surface);
+      padding:9px 14px;
+      border-radius:999px;
+      font-size:12px;
+      opacity:0;
+      pointer-events:none;
+      transition:.25s;
+      z-index:20;
+    }
+    .toast.show { opacity:1; transform:translate(-50%, 0); }
+    @media (max-width: 900px) {
+      main { grid-template-columns:1fr; }
+      .intro { display:grid; gap:10px; }
+      .habitat { min-height:780px; }
+    }
+    @media (max-width: 520px) {
+      main { padding:10px; gap:10px; }
+      .intro { padding:8px 5px 3px; }
+      .intro h1 { font-size:34px; }
+      .habitat { min-height:770px; border-radius:20px 8px; }
+      .creature-wrap { inset:104px 0 320px; }
+      .creature { width:min(330px, 92%); }
+      .speech { top:9%; right:3%; font-size:12px; max-width:58%; }
+      .stimulus-zone { left:12px; right:12px; bottom:214px; gap:5px; }
+      .object { grid-template-columns:1fr; place-items:center; text-align:center; min-height:72px; padding:7px 4px; }
+      .object svg { width:27px; height:27px; }
+      .object small { font-size:8px; max-width:100%; }
+      .needs { left:12px; right:12px; bottom:116px; grid-template-columns:repeat(2,1fr); gap:6px; }
+      .need { padding:7px 8px; }
+      .actions { left:12px; right:12px; bottom:12px; gap:5px; }
+      .action { min-height:84px; border-radius:13px 5px; }
+      .action span { font-size:11px; }
+      .panel { padding:14px; }
+      #brain { height:190px; }
+      .dna-grid { grid-template-columns:1fr; }
+      .word-entry { grid-template-columns:1fr; }
+      .target-buttons { grid-template-columns:1fr; }
+      .vocab-item { grid-template-columns:minmax(64px,.65fr) minmax(90px,1fr) 38px; }
+      .footer-tools { align-items:flex-start; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header class="intro">
+    <h1>Una vida pequeña.<br>Un cerebro de verdad.</h1>
+    <p>Cuídalo, obsérvalo y enséñale. Sus genes marcan el punto de partida; su red neuronal cambia con cada experiencia.</p>
+  </header>
+
+  <section class="habitat" aria-label="Hábitat de la criatura">
+    <div class="room-lights"></div>
+    <div class="habitat-top">
+      <div class="identity">
+        <strong id="creatureName">Nilo</strong>
+        <span class="mono" id="age">DÍA 01 · CRÍA</span>
+      </div>
+      <span class="status-badge" id="mood">Curioso</span>
+    </div>
+    <div class="creature-wrap">
+      <div class="speech" id="speech">¿Eso de ahí se come?</div>
+      <svg class="creature happy" id="creature" viewBox="0 0 500 500" role="img" aria-label="Una criatura virtual verde menta con antenas y grandes ojos">
+        <defs>
+          <radialGradient id="bodyG" cx="38%" cy="28%" r="72%">
+            <stop offset="0" stop-color="#d6fff2"/><stop offset=".58" stop-color="#7ed4bd"/><stop offset="1" stop-color="#329681"/>
+          </radialGradient>
+          <radialGradient id="bellyG" cx="40%" cy="30%"><stop offset="0" stop-color="#f9dfab"/><stop offset="1" stop-color="#e4a94d"/></radialGradient>
+          <filter id="soft"><feGaussianBlur stdDeviation="8"/></filter>
+        </defs>
+        <ellipse cx="250" cy="442" rx="132" ry="24" fill="#164d42" opacity=".18" filter="url(#soft)"/>
+        <path d="M165 132 C126 78 128 48 151 43 C175 39 190 77 192 121" fill="none" stroke="#48a892" stroke-width="18" stroke-linecap="round"/>
+        <path d="M336 130 C374 80 373 51 351 45 C326 39 311 78 309 122" fill="none" stroke="#48a892" stroke-width="18" stroke-linecap="round"/>
+        <g class="antenna-glow"><circle cx="151" cy="43" r="18" fill="#eab552" opacity=".28"/><circle cx="151" cy="43" r="9" fill="#ffd678"/><circle cx="351" cy="45" r="18" fill="#eab552" opacity=".28"/><circle cx="351" cy="45" r="9" fill="#ffd678"/></g>
+        <path d="M126 260 C89 252 68 274 80 298 C89 317 117 310 145 292" fill="url(#bodyG)" stroke="#287967" stroke-width="5"/>
+        <path d="M375 260 C413 250 433 275 420 299 C411 317 383 309 357 291" fill="url(#bodyG)" stroke="#287967" stroke-width="5"/>
+        <path d="M150 352 C131 405 144 434 183 436 C206 437 219 421 220 391" fill="url(#bodyG)" stroke="#287967" stroke-width="5"/>
+        <path d="M350 352 C370 404 357 434 318 436 C294 437 282 421 280 391" fill="url(#bodyG)" stroke="#287967" stroke-width="5"/>
+        <path d="M123 203 C123 126 177 91 250 91 C324 91 377 128 377 204 L362 351 C356 410 317 430 250 430 C184 430 145 409 138 351 Z" fill="url(#bodyG)" stroke="#287967" stroke-width="6"/>
+        <ellipse cx="250" cy="337" rx="79" ry="67" fill="url(#bellyG)" opacity=".8"/>
+        <path d="M146 170 C107 141 102 115 123 105 C146 95 163 126 172 158" fill="#6cc5b0" stroke="#287967" stroke-width="5"/>
+        <path d="M354 170 C393 141 398 115 377 105 C354 95 337 126 328 158" fill="#6cc5b0" stroke="#287967" stroke-width="5"/>
+        <ellipse cx="195" cy="213" rx="48" ry="55" fill="#f4fffc" stroke="#287967" stroke-width="5"/>
+        <ellipse cx="305" cy="213" rx="48" ry="55" fill="#f4fffc" stroke="#287967" stroke-width="5"/>
+        <ellipse cx="200" cy="220" rx="23" ry="29" fill="#133832"/><ellipse cx="300" cy="220" rx="23" ry="29" fill="#133832"/>
+        <circle cx="210" cy="208" r="7" fill="white"/><circle cx="310" cy="208" r="7" fill="white"/>
+        <rect class="eye-lid" x="149" y="182" width="95" height="7" rx="4" fill="#409b87" opacity=".18"/>
+        <rect class="eye-lid" x="257" y="182" width="95" height="7" rx="4" fill="#409b87" opacity=".18"/>
+        <path d="M241 274 Q250 282 259 274" fill="none" stroke="#26695b" stroke-width="5" stroke-linecap="round"/>
+        <path class="mouth-neutral" d="M218 298 Q250 326 282 298" fill="none" stroke="#174d43" stroke-width="7" stroke-linecap="round"/>
+        <path class="mouth-happy" d="M218 298 Q250 334 282 298 Q251 313 218 298" fill="#ce654e" stroke="#174d43" stroke-width="6" stroke-linejoin="round"/>
+        <circle cx="158" cy="278" r="17" fill="#e87565" opacity=".25"/><circle cx="342" cy="278" r="17" fill="#e87565" opacity=".25"/>
+        <g fill="#ebbe62" opacity=".8"><circle cx="181" cy="121" r="6"/><circle cx="211" cy="109" r="4"/><circle cx="290" cy="109" r="5"/><circle cx="322" cy="124" r="7"/></g>
+      </svg>
+    </div>
+    <div class="stimulus-zone" aria-label="Objetos del hábitat">
+      <button class="object" data-object="ball" aria-label="Hacer rodar la pelota">
+        <svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="13"/><path d="m10 8 5 7h7l4-7M5 20l10-5m16 5-9-5M11 30l4-9m10 9-3-9"/></svg>
+        <span><strong>Pelota</strong><small id="ballState">quieta</small></span>
+      </button>
+      <button class="object" data-object="feeder" aria-label="Pulsar el dispensador">
+        <svg viewBox="0 0 36 36" aria-hidden="true"><rect x="7" y="4" width="22" height="25" rx="4"/><circle cx="18" cy="12" r="3"/><path d="M12 22h12m-9 0v7m6-7v7M12 33h12"/></svg>
+        <span><strong>Dispensador</strong><small id="feederState">3 porciones</small></span>
+      </button>
+      <button class="object" data-object="console" aria-label="Pulsar la consola de luz">
+        <svg viewBox="0 0 36 36" aria-hidden="true"><path d="M11 27h14M14 32h8M18 4a10 10 0 0 0-6 18c2 1 2 3 2 5h8c0-2 0-4 2-5A10 10 0 0 0 18 4Z"/><path d="M18 0v2M4 16H1m34 0h-3M7 5l2 2m20-2-2 2"/></svg>
+        <span><strong>Consola</strong><small id="consoleState">luz suave</small></span>
+      </button>
+    </div>
+    <div class="needs" aria-label="Necesidades de Nilo">
+      <div class="need"><div class="need-line"><span>Energía</span><strong id="energyVal">76%</strong></div><div class="bar"><i id="energyBar"></i></div></div>
+      <div class="need"><div class="need-line"><span>Saciedad</span><strong id="foodVal">62%</strong></div><div class="bar"><i id="foodBar"></i></div></div>
+      <div class="need"><div class="need-line"><span>Vínculo</span><strong id="bondVal">54%</strong></div><div class="bar"><i id="bondBar"></i></div></div>
+      <div class="need"><div class="need-line"><span>Curiosidad</span><strong id="curiosityVal">71%</strong></div><div class="bar"><i id="curiosityBar"></i></div></div>
+    </div>
+    <div class="actions" aria-label="Interactuar">
+      <button class="action" data-action="feed" aria-label="Dar de comer">
+        <svg viewBox="0 0 24 24"><path d="M5 9h14l-1 9H6L5 9Z"/><path d="M8 9c0-3 8-3 8 0M9 13h6"/></svg><span>Comer</span>
+      </button>
+      <button class="action" data-action="play" aria-label="Jugar con la pelota">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m8 6 2 4h4l2-4M5 13l5-3M19 13l-5-3M8 19l2-5M16 19l-2-5"/></svg><span>Jugar</span>
+      </button>
+      <button class="action" data-action="cuddle" aria-label="Dar cariño">
+        <svg viewBox="0 0 24 24"><path d="M12 20S4 15 4 9a4 4 0 0 1 7-2.6L12 8l1-1.6A4 4 0 0 1 20 9c0 6-8 11-8 11Z"/></svg><span>Cariño</span>
+      </button>
+      <button class="action" data-action="teach" aria-label="Abrir el aprendizaje de palabras">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5Z"/><path d="M8 9h8M8 12h5"/></svg><span>Hablar</span>
+      </button>
+    </div>
+  </section>
+
+  <aside class="lab" aria-label="Biología y aprendizaje">
+    <section class="panel">
+      <div class="panel-head"><div><h2>Cerebro adaptativo</h2><p>Lee necesidades y estímulos; después reajusta conexiones.</p></div><div class="net-stat">9 ENTRADAS<br>12 OCULTAS · 6 ACCIONES</div></div>
+      <canvas id="brain" aria-label="Visualización de la red neuronal de Nilo"></canvas>
+      <div class="thought"><span>Decisión actual: <strong id="decision">explorar</strong></span><span id="confidence">confianza 58%</span><button class="small-btn" id="autoBtn">Dejarle decidir</button></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>ADN sintético</h2><p>Predispone; no sentencia.</p></div><div class="net-stat" id="generation">GEN. 01<br>96 GENES</div></div>
+      <div class="dna-grid">
+        <div class="gene"><div class="gene-top"><span>Curiosidad</span><strong id="gene-curiosity-value">72%</strong></div><div class="bar"><i id="gene-curiosity-bar" style="width:72%"></i></div></div>
+        <div class="gene"><div class="gene-top"><span>Sociabilidad</span><strong id="gene-social-value">81%</strong></div><div class="bar"><i id="gene-social-bar" style="width:81%;background:var(--amber)"></i></div></div>
+        <div class="gene"><div class="gene-top"><span>Resiliencia</span><strong id="gene-resilience-value">64%</strong></div><div class="bar"><i id="gene-resilience-bar" style="width:64%;background:var(--coral)"></i></div></div>
+        <div class="gene"><div class="gene-top"><span>Apetito</span><strong id="gene-appetite-value">46%</strong></div><div class="bar"><i id="gene-appetite-bar" style="width:46%"></i></div></div>
+      </div>
+      <div class="dna-sequence" id="dna">ATG-CCT-GAA-TTC · CGA-AAT-GGC-TAC · TTA-GCG-AAC-CTA</div>
+    </section>
+
+    <section class="panel" id="languagePanel">
+      <div class="panel-head"><div><h2>Lenguaje por asociación</h2><p>Di una palabra mientras activas un objeto. La repetición refuerza su significado.</p></div><div class="net-stat"><span id="wordCount">0</span> PALABRAS<br><span id="learnedCount">0</span> APRENDIDAS</div></div>
+      <div class="language-workbench">
+        <div class="word-entry">
+          <input id="wordInput" type="text" maxlength="18" autocomplete="off" placeholder="Escribe una palabra" aria-label="Palabra que quieres enseñar">
+          <button class="small-btn" id="sayBtn">Solo decirla</button>
+        </div>
+        <div class="target-buttons" aria-label="Asociar palabra con estímulo">
+          <button class="target-btn" data-teach-target="ball">Decir + pelota</button>
+          <button class="target-btn" data-teach-target="feeder">Decir + dispensador</button>
+          <button class="target-btn" data-teach-target="console">Decir + consola</button>
+        </div>
+        <div class="vocabulary" id="vocabulary"><div class="vocab-empty">Todavía no ha asociado ninguna palabra.</div></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>Memoria episódica</h2><p>Experiencias que usa para anticipar qué ocurrirá.</p></div><div class="net-stat"><span id="memoryCount">3</span> RECUERDOS</div></div>
+      <div class="log" id="log">
+        <div class="log-item"><time>AHORA</time><div><strong>Observa el entorno</strong>La novedad despierta su curiosidad.</div></div>
+        <div class="log-item"><time>- 2 MIN</time><div><strong>Ha reconocido tu presencia</strong>El vínculo social está activo.</div></div>
+        <div class="log-item"><time>NACER</time><div><strong>Primer patrón aprendido</strong>Luz suave = espacio seguro.</div></div>
+      </div>
+    </section>
+
+    <section class="panel footer-tools">
+      <div class="memory-note">El aprendizaje vive en esta sesión. Exporta ADN, red, vocabulario y recuerdos para continuar otro día.</div>
+      <div class="tool-buttons">
+        <label class="file-label">Importar<input type="file" id="importFile" accept="application/json"></label>
+        <button class="small-btn" id="exportBtn">Exportar estado</button>
+        <button class="small-btn" id="newBtn">Nuevo huevo</button>
+      </div>
+    </section>
+  </aside>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+  var clamp = function(v){ return Math.max(0, Math.min(100, v)); };
+  var labels = ['comer', 'jugar', 'buscar cariño', 'explorar', 'usar máquina', 'dormir'];
+  var targetNames = { ball:'pelota', feeder:'dispensador', console:'consola', sound:'sonido' };
+  var state = {
+    name: 'Nilo', age: 1, ticks: 0,
+    needs: { energy: 76, food: 62, bond: 54, curiosity: 71 },
+    genome: { curiosity: .72, social: .81, resilience: .64, appetite: .46 },
+    dna: 'ATG-CCT-GAA-TTC · CGA-AAT-GGC-TAC · TTA-GCG-AAC-CTA',
+    memories: [
+      {title:'Observa el entorno', text:'La novedad despierta su curiosidad.'},
+      {title:'Ha reconocido tu presencia', text:'El vínculo social está activo.'},
+      {title:'Primer patrón aprendido', text:'Luz suave = espacio seguro.'}
+    ],
+    words: [],
+    stimuli: { ball: 0, feeder: 0, console: 0 },
+    machineCharge: 3,
+    lightBright: false,
+    weights: [],
+    lastActivations: [],
+    lastDecision: 3
+  };
+
+  function seededWeights() {
+    var rows = [], i, j;
+    for (i=0;i<12;i++) { rows[i]=[]; for(j=0;j<9;j++) rows[i][j]=Math.sin((i+1)*(j+2)*1.73)*.48; }
+    return rows;
+  }
+  state.weights = seededWeights();
+
+  var el = function(id){ return document.getElementById(id); };
+  var creature = el('creature'), speech = el('speech'), habitat = document.querySelector('.habitat'), toastTimer;
+  function toast(msg) { var t=el('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(function(){t.classList.remove('show');},2200); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];}); }
+
+  function inputs() {
+    return [
+      state.needs.energy/100, state.needs.food/100, state.needs.bond/100, state.needs.curiosity/100,
+      state.stimuli.ball/100, state.stimuli.feeder/100, state.stimuli.console/100,
+      state.genome.social, state.genome.curiosity
+    ];
+  }
+  function think() {
+    var inp=inputs(), acts=[], i,j,sum;
+    for(i=0;i<12;i++){ sum=0; for(j=0;j<9;j++) sum+=inp[j]*state.weights[i][j]; acts[i]=1/(1+Math.exp(-sum)); }
+    state.lastActivations=acts;
+    var scores=[
+      (1-state.needs.food/100)*1.25 + acts[0]*.4,
+      state.needs.energy/100*state.genome.curiosity*.55 + (1-state.needs.curiosity/100)*.65 + state.stimuli.ball/250 + acts[3]*.35,
+      (1-state.needs.bond/100)*state.genome.social + acts[6]*.4,
+      state.needs.curiosity/100*state.genome.curiosity + state.stimuli.console/260 + acts[8]*.32,
+      (1-state.needs.food/100)*.55 + state.stimuli.feeder/180 + acts[10]*.38,
+      (1-state.needs.energy/100)*1.25 + acts[11]*.35
+    ];
+    var max=Math.max.apply(null,scores), idx=scores.indexOf(max);
+    state.lastDecision=idx;
+    el('decision').textContent=labels[idx];
+    el('confidence').textContent='confianza '+Math.min(96,Math.round(45+max*28))+'%';
+    drawBrain();
+  }
+  function learn(action, reward) {
+    var map={feed:0,play:3,cuddle:6,teach:8,machine:10,sleep:11}, row=map[action], inp=inputs(), j;
+    if(row===undefined) return;
+    for(j=0;j<9;j++) state.weights[row][j]=Math.max(-1,Math.min(1,state.weights[row][j]+.035*reward*inp[j]));
+    think();
+  }
+  function addMemory(title,text) {
+    state.memories.unshift({title:title,text:text});
+    if(state.memories.length>10) state.memories.pop();
+    renderLog();
+  }
+  function renderLog(){
+    var html='';
+    state.memories.forEach(function(m,i){ html+='<div class="log-item"><time>'+(i===0?'AHORA':'- '+i+' EXP')+'</time><div><strong>'+escapeHtml(m.title)+'</strong>'+escapeHtml(m.text)+'</div></div>'; });
+    el('log').innerHTML=html; el('memoryCount').textContent=state.memories.length;
+  }
+  function renderVocabulary(){
+    var html='', learned=0;
+    state.words.forEach(function(item){
+      var pct=clamp(item.confidence || item.repetitions*34);
+      if(pct>=100) learned++;
+      html+='<div class="vocab-item"><span class="vocab-word">«'+escapeHtml(item.word)+'»</span><span class="vocab-target">'+escapeHtml(targetNames[item.target] || item.target)+'<span class="vocab-meter"><i style="width:'+pct+'%"></i></span></span><span class="vocab-pct">'+Math.round(pct)+'%</span></div>';
+    });
+    el('vocabulary').innerHTML=html || '<div class="vocab-empty">Todavía no ha asociado ninguna palabra.</div>';
+    el('wordCount').textContent=state.words.length;
+    el('learnedCount').textContent=learned;
+  }
+  function setSpeech(text){ speech.style.opacity='0'; speech.style.transform='translateY(5px)'; setTimeout(function(){speech.textContent=text;speech.style.opacity='1';speech.style.transform='';},160); }
+  function react(){
+    creature.classList.remove('excited','sleepy','sad');
+    void creature.offsetWidth;
+    creature.classList.add('excited','happy');
+    setTimeout(function(){ creature.classList.remove('excited'); },1100);
+  }
+  function learnedWord(target){
+    var matches=state.words.filter(function(w){return w.target===target && (w.confidence || 0)>=100;});
+    matches.sort(function(a,b){return (b.confidence||0)-(a.confidence||0);});
+    return matches[0] ? matches[0].word : '';
+  }
+  function flashObject(target){
+    var btn=document.querySelector('[data-object="'+target+'"]');
+    if(!btn) return;
+    btn.classList.remove('active'); void btn.offsetWidth; btn.classList.add('active');
+    setTimeout(function(){btn.classList.remove('active');},650);
+  }
+  function useObject(target, teachingWord){
+    var n=state.needs, known=learnedWord(target), didAct=true;
+    flashObject(target);
+    state.stimuli[target]=100;
+    if(target==='ball') {
+      if(n.energy<15) { didAct=false; setSpeech('La veo… pero estoy cansado.'); addMemory('Pelota ignorada','La falta de energía frenó el impulso de jugar.'); learn('play',-.45); }
+      else {
+        n.energy=clamp(n.energy-9); n.curiosity=clamp(n.curiosity+18); n.bond=clamp(n.bond+4);
+        el('ballState').textContent='rodando'; setTimeout(function(){el('ballState').textContent='quieta';},1400);
+        setSpeech(teachingWord ? '«'+teachingWord+'»… y rueda.' : known ? '¡'+known+'! ¡Otra vez!' : '¡Rueda y vuelve!');
+        addMemory('Pelota en movimiento','Movimiento, sonido y diversión quedaron conectados.'); learn('play',1.15);
+      }
+    }
+    if(target==='feeder') {
+      if(state.machineCharge<=0) { didAct=false; setSpeech('Pulso… pero no cae nada.'); addMemory('Máquina vacía','El botón no siempre produce comida.'); learn('machine',-.35); }
+      else {
+        state.machineCharge--; n.food=clamp(n.food+20); n.energy=clamp(n.energy+3);
+        setSpeech(teachingWord ? '«'+teachingWord+'»… botón y comida.' : known ? '¡'+known+'! Sé lo que viene.' : 'Botón… ruido… ¡comida!');
+        addMemory('Dispensador activado','Ha relacionado botón, sonido y recompensa.'); learn('machine',1.2);
+      }
+    }
+    if(target==='console') {
+      state.lightBright=!state.lightBright; habitat.classList.toggle('light-bright',state.lightBright);
+      n.curiosity=clamp(n.curiosity+15); n.energy=clamp(n.energy-2);
+      setSpeech(teachingWord ? '«'+teachingWord+'»… la luz cambia.' : known ? '¡'+known+'! Luz '+(state.lightBright?'fuerte.':'suave.') : '¡La luz ha cambiado!');
+      addMemory('Cambio de luz','Color y brillo forman un estímulo nuevo.'); learn('machine',.75);
+    }
+    if(didAct) react();
+    updateUI();
+  }
+  function interact(action){
+    var n=state.needs, reward=1;
+    if(action==='feed') { n.food=clamp(n.food+24); n.energy=clamp(n.energy+4); setSpeech('¡Cruje! Esto me gusta.'); addMemory('Comida recibida','Ha asociado tu gesto con saciedad.'); }
+    if(action==='play') { if(n.energy<15){ reward=-.4; setSpeech('Ahora no… necesito descansar.'); addMemory('Juego rechazado','Con poca energía, jugar no compensa.'); } else { n.energy=clamp(n.energy-12); n.curiosity=clamp(n.curiosity+19); n.bond=clamp(n.bond+6); setSpeech('¡Otra vez, otra vez!'); addMemory('Juego compartido','Movimiento + tu presencia = alegría.'); } }
+    if(action==='cuddle') { n.bond=clamp(n.bond+22); n.energy=clamp(n.energy+3); setSpeech('Mmm… contigo estoy seguro.'); addMemory('Contacto amable','Ha bajado su alerta y reforzado el vínculo.'); }
+    if(action==='teach') {
+      el('languagePanel').scrollIntoView({behavior:'smooth',block:'center'});
+      setTimeout(function(){el('wordInput').focus();},350);
+      setSpeech('Dime algo mientras me enseñas qué significa.');
+      return;
+    }
+    learn(action,reward); react(); updateUI();
+  }
+  document.querySelectorAll('[data-action]').forEach(function(btn){btn.addEventListener('click',function(){interact(btn.getAttribute('data-action'));});});
+  document.querySelectorAll('[data-object]').forEach(function(btn){btn.addEventListener('click',function(){useObject(btn.getAttribute('data-object'));});});
+
+  function teachAssociation(target){
+    var input=el('wordInput'), word=input.value.trim().replace(/\s+/g,' ');
+    if(!word){ toast('Escribe primero una palabra'); input.focus(); return; }
+    var key=word.toLocaleLowerCase('es'), item=state.words.find(function(w){return w.word.toLocaleLowerCase('es')===key && w.target===target;});
+    if(!item){ item={word:word,target:target,repetitions:0,confidence:0}; state.words.push(item); }
+    item.repetitions++; item.confidence=clamp(item.repetitions*34);
+    useObject(target, word);
+    learn('teach',.7+item.repetitions*.15);
+    if(item.repetitions===1) addMemory('Primer ensayo: «'+word+'»','Empieza a vincular el sonido con '+targetNames[target]+'.');
+    if(item.repetitions===3) { addMemory('Palabra aprendida: «'+word+'»','Ya anticipa '+targetNames[target]+' al escucharla.'); toast('Ha aprendido «'+word+'»'); }
+    else toast('Asociación '+Math.round(item.confidence)+'% · repítela');
+    renderVocabulary(); updateUI();
+  }
+  document.querySelectorAll('[data-teach-target]').forEach(function(btn){btn.addEventListener('click',function(){teachAssociation(btn.getAttribute('data-teach-target'));});});
+  el('sayBtn').addEventListener('click',function(){
+    var word=el('wordInput').value.trim(), key=word.toLocaleLowerCase('es');
+    if(!word){ toast('Escribe primero una palabra'); el('wordInput').focus(); return; }
+    var matches=state.words.filter(function(w){return w.word.toLocaleLowerCase('es')===key;});
+    matches.sort(function(a,b){return (b.confidence||0)-(a.confidence||0);});
+    if(matches[0] && matches[0].confidence>=100){
+      state.stimuli[matches[0].target]=Math.max(state.stimuli[matches[0].target]||0,55);
+      flashObject(matches[0].target);
+      setSpeech('«'+word+'»… '+targetNames[matches[0].target]+'.');
+      addMemory('Reconoce «'+word+'»','Busca '+targetNames[matches[0].target]+' antes de que ocurra nada.');
+      learn('teach',.5); updateUI();
+    } else { setSpeech('Te oigo, pero aún no sé qué significa.'); toast('Necesita asociarla a un estímulo'); }
+  });
+  el('wordInput').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();el('sayBtn').click();}});
+
+  function updateGeneUI(){
+    ['curiosity','social','resilience','appetite'].forEach(function(k){
+      var pct=Math.round(state.genome[k]*100), val=el('gene-'+k+'-value'), bar=el('gene-'+k+'-bar');
+      if(val) val.textContent=pct+'%'; if(bar) bar.style.width=pct+'%';
+    });
+  }
+  function updateUI(){
+    var n=state.needs;
+    ['energy','food','bond','curiosity'].forEach(function(k){ el(k+'Val').textContent=Math.round(n[k])+'%'; el(k+'Bar').style.width=n[k]+'%'; });
+    var avg=(n.energy+n.food+n.bond)/3, mood='Curioso';
+    creature.classList.remove('sleepy','sad');
+    if(n.energy<24){mood='Soñoliento';creature.classList.add('sleepy');}
+    if(n.food<18||n.bond<16){mood='Necesita atención';creature.classList.add('sad');creature.classList.remove('happy');} else creature.classList.add('happy');
+    if(avg>82)mood='Radiante';
+    el('mood').textContent=mood;
+    el('age').textContent='DÍA '+String(state.age).padStart(2,'0')+' · '+(state.age<4?'CRÍA':state.age<10?'JOVEN':'ADULTO');
+    el('creatureName').textContent=state.name;
+    el('dna').textContent=state.dna;
+    el('feederState').textContent=state.machineCharge+' '+(state.machineCharge===1?'porción':'porciones');
+    el('consoleState').textContent=state.lightBright?'luz fuerte':'luz suave';
+    habitat.classList.toggle('light-bright',state.lightBright);
+    updateGeneUI(); think();
+  }
+
+  function drawBrain(){
+    var c=el('brain'), rect=c.getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio||1,2);
+    if(!rect.width || !rect.height) return;
+    c.width=Math.round(rect.width*dpr); c.height=Math.round(rect.height*dpr);
+    var x=c.getContext('2d'); x.scale(dpr,dpr); var w=rect.width,h=rect.height;
+    var css=getComputedStyle(document.documentElement), teal=css.getPropertyValue('--teal').trim(), amber=css.getPropertyValue('--amber').trim(), ink=css.getPropertyValue('--ink').trim();
+    var left=[],mid=[],right=[],i;
+    function spread(count,index,pad){return pad+index*(h-pad*2)/(count-1);}
+    for(i=0;i<9;i++) left.push({x:25,y:spread(9,i,13),v:inputs()[i]});
+    for(i=0;i<12;i++) mid.push({x:w*.52,y:spread(12,i,10),v:state.lastActivations[i]||.5});
+    for(i=0;i<6;i++) right.push({x:w-25,y:spread(6,i,22),v:i===state.lastDecision?1:.28});
+    x.lineWidth=.8;
+    left.forEach(function(a,li){mid.forEach(function(b,mi){var strength=Math.abs(state.weights[mi][li]); x.strokeStyle=state.weights[mi][li]>0?teal:amber;x.globalAlpha=.05+strength*.18;x.beginPath();x.moveTo(a.x,a.y);x.bezierCurveTo(w*.21,a.y,w*.35,b.y,b.x,b.y);x.stroke();});});
+    mid.forEach(function(a){right.forEach(function(b){x.strokeStyle=teal;x.globalAlpha=.04+a.v*.13;x.beginPath();x.moveTo(a.x,a.y);x.bezierCurveTo(w*.67,a.y,w*.79,b.y,b.x,b.y);x.stroke();});});
+    function nodes(arr,color){arr.forEach(function(n){x.globalAlpha=.2+n.v*.5;x.fillStyle=color;x.beginPath();x.arc(n.x,n.y,3.7+n.v*2.6,0,Math.PI*2);x.fill();x.globalAlpha=1;x.strokeStyle=ink;x.lineWidth=.8;x.beginPath();x.arc(n.x,n.y,3.2,0,Math.PI*2);x.stroke();});}
+    nodes(left,teal);nodes(mid,teal);nodes(right,amber);x.globalAlpha=1;
+  }
+
+  function autonomousStep(){
+    think();
+    var d=state.lastDecision;
+    if(d===0){ if(state.machineCharge>0) useObject('feeder'); else interact('feed'); }
+    if(d===1) useObject('ball');
+    if(d===2){ setSpeech('Me acerco a ti. ¿Un poco de cariño?'); state.needs.bond=clamp(state.needs.bond+4); addMemory('Busca compañía','Su necesidad social guía la conducta.'); learn('cuddle',.4); react(); updateUI(); }
+    if(d===3) useObject('console');
+    if(d===4) useObject(state.machineCharge>0?'feeder':'console');
+    if(d===5){ state.needs.energy=clamp(state.needs.energy+24); state.needs.food=clamp(state.needs.food-3); setSpeech('Voy a cerrar los ojos un rato…'); addMemory('Descanso elegido','Ha priorizado recuperar energía.'); learn('sleep',1); creature.classList.add('sleepy'); updateUI(); }
+  }
+  el('autoBtn').addEventListener('click',autonomousStep);
+
+  function tick(){
+    state.ticks++;
+    state.needs.energy=clamp(state.needs.energy-.18);
+    state.needs.food=clamp(state.needs.food-(.12+state.genome.appetite*.08));
+    state.needs.bond=clamp(state.needs.bond-.06);
+    state.needs.curiosity=clamp(state.needs.curiosity-.08);
+    ['ball','feeder','console'].forEach(function(k){state.stimuli[k]=clamp(state.stimuli[k]-12);});
+    if(state.ticks%20===0 && state.machineCharge<3) state.machineCharge++;
+    if(state.ticks%120===0) state.age++;
+    updateUI();
+  }
+  setInterval(tick,3000);
+  window.addEventListener('resize',drawBrain);
+
+  function normalizeImported(s){
+    s.stimuli=s.stimuli||{ball:0,feeder:0,console:0};
+    s.machineCharge=typeof s.machineCharge==='number'?s.machineCharge:3;
+    s.lightBright=!!s.lightBright;
+    s.words=(s.words||[]).map(function(w){return typeof w==='string'?{word:w,target:'sound',repetitions:1,confidence:25}:w;});
+    if(!Array.isArray(s.weights)||s.weights.length!==12||!Array.isArray(s.weights[0])||s.weights[0].length!==9) s.weights=seededWeights();
+    s.lastActivations=[];
+    if(typeof s.lastDecision!=='number'||s.lastDecision>5) s.lastDecision=3;
+    return s;
+  }
+  el('exportBtn').addEventListener('click',function(){
+    var payload={version:2,savedAt:new Date().toISOString(),creature:state};
+    var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}), a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download='bichito-'+state.name.toLowerCase()+'-estado.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},500);toast('Estado exportado');
+  });
+  el('importFile').addEventListener('change',function(e){
+    var file=e.target.files[0]; if(!file)return;
+    var reader=new FileReader(); reader.onload=function(){try{var p=JSON.parse(reader.result);if(!p.creature||!p.creature.needs||!p.creature.genome)throw new Error();state=normalizeImported(p.creature);renderLog();renderVocabulary();updateUI();setSpeech('¡Te recuerdo!');toast('Memoria restaurada');}catch(err){toast('Ese archivo no es un estado válido');}e.target.value='';};reader.readAsText(file);
+  });
+  el('newBtn').addEventListener('click',function(){
+    var names=['Muna','Tiko','Lumi','Boro','Nara'], bases=['GTA-ACC-TTG-CGA','AAC-GGT-CTA-TTC','TGC-AAG-CCT-GAA'];
+    state.name=names[Math.floor(Math.random()*names.length)]; state.age=1;state.ticks=0;
+    state.needs={energy:80,food:68,bond:38,curiosity:86};
+    state.genome={curiosity:.55+Math.random()*.4,social:.45+Math.random()*.5,resilience:.5+Math.random()*.4,appetite:.35+Math.random()*.4};
+    state.dna=bases[Math.floor(Math.random()*bases.length)]+' · CGA-AAT-GGC-TAC · '+bases[Math.floor(Math.random()*bases.length)];
+    state.memories=[{title:'Ha salido del huevo',text:'Todo el mundo es nuevo para '+state.name+'.'}];
+    state.words=[];state.stimuli={ball:0,feeder:0,console:0};state.machineCharge=3;state.lightBright=false;state.weights=seededWeights();state.lastDecision=3;
+    renderLog();renderVocabulary();updateUI();setSpeech('¿Tú quién eres?');react();toast('Ha nacido '+state.name);
+  });
+  renderLog(); renderVocabulary(); updateUI(); setTimeout(drawBrain,120);
+})();
+</script>
+</body>
+</html>
