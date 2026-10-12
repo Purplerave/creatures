@@ -169,7 +169,7 @@ function renderVocabulary(): void {
   if (entries.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'vocab-empty';
-    empty.textContent = 'Todavía no ha asociado ninguna palabra.';
+    empty.textContent = 'Todavía no se han enseñado asociaciones.';
     vocabularyListElement.append(empty);
     return;
   }
@@ -215,7 +215,7 @@ function teachWord(event: SubmitEvent): void {
   try {
     vocabulary.teach(word, stimulusSelectElement.value);
     const stimulusLabel = STIMULI.find((stimulus) => stimulus.id === stimulusSelectElement.value)?.label ?? 'el objeto';
-    vocabularyFeedbackElement.textContent = `Nilo asoció «${word}» con ${stimulusLabel}. Repite la asociación para reforzarla.`;
+    vocabularyFeedbackElement.textContent = `Asociación registrada: «${word}» → ${stimulusLabel}. Repítela para reforzarla.`;
     wordInputElement.value = '';
     renderVocabulary();
     wordInputElement.focus();

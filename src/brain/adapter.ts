@@ -14,11 +14,11 @@
  * 4. `reinforce(reward)` (reward en [-1, 1]) refuerza la ÚLTIMA acción de
  *    `think()`; sin `think()` previo es un no-op (no lanza).
  *
- * Mapeos PROVISIONALES (confirmar con la CEO en el pad, ver docs/ADAPTER.md):
+ * Mapeos PROVISIONALES (ver docs/ADAPTER.md):
  * - stimuli = [dopamina, cortisol, adenosina] → recompensa/apetito, estrés,
  *   fatiga: los tres ejes químicos que más condicionan una decisión.
- * - genome = provider opcional `mapGenome`; por defecto [0,0,0,0]
- *   ("pendiente de cablear genoma"; hay helper `genomeProvider` listo).
+ * - genome = la composición de runtime inyecta `mapGenome` desde `Genome`;
+ *   el adaptador directo usa [0,0,0,0] como fallback si no recibe provider.
  * - actions = [clamp(action, -1, 1)]; si `action` resulta ser índice discreto
  *   0..n-1, valorar one-hot con la CEO.
  */
@@ -49,7 +49,7 @@ export const DRIVE_ORDER: readonly DriveId[] = [
  */
 export const STIMULUS_CHEMICALS = ['dopamina', 'cortisol', 'adenosina'] as const;
 
-/** Genoma por defecto mientras no está cableado el módulo de genoma. */
+/** Fallback del adaptador cuando se usa sin provider de genes. */
 export const GENOME_DEFAULT: readonly number[] = [0, 0, 0, 0];
 
 /** Proveedor de los 3 estímulos (recibe las `BrainInputs` crudas). */
@@ -63,7 +63,7 @@ export interface BrainV05AdapterOptions {
   driveOrder?: readonly DriveId[];
   /** Overrides de los 3 estímulos (por defecto `STIMULUS_CHEMICALS`). */
   mapStimuli?: StimuliProvider;
-  /** Override de los 4 genes (por defecto `[0,0,0,0]`, pendiente de cablear). */
+  /** Override de los 4 genes; sin provider el adapter directo usa `[0,0,0,0]`. */
   mapGenome?: GenomeProvider;
 }
 
@@ -144,7 +144,7 @@ function defaultStimuli(inputs: BrainInputs): number[] {
   return STIMULUS_CHEMICALS.map((id) => clamp01(inputs.chemicals[id] ?? 0));
 }
 
-/** Genoma por defecto: [0,0,0,0] — PENDIENTE de cablear el genoma real. */
+/** Fallback del adaptador directo: [0,0,0,0]. La app usa createBrainRuntime(). */
 function defaultGenome(_inputs: BrainInputs): number[] {
   return [...GENOME_DEFAULT];
 }
