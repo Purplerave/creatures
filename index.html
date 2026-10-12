@@ -270,6 +270,119 @@
       .drive-card:nth-child(4n + 2) .drive-meter span { background: var(--amber); }
       .drive-card:nth-child(4n + 3) .drive-meter span { background: #69a9bb; }
       .drive-card:nth-child(4n + 4) .drive-meter span { background: var(--coral); }
+      .brain-panel {
+        margin-top: 14px;
+        padding: 18px 19px 20px;
+        border: 1px solid var(--line);
+        border-radius: 12px 22px 12px 22px;
+        background: var(--surface);
+      }
+      .brain-panel .panel-heading { flex-wrap: wrap; }
+      .brain-stats {
+        max-width: 50%;
+        white-space: normal;
+        text-align: right;
+      }
+      .brain-decision {
+        margin: 0 0 12px;
+        padding: 10px 12px;
+        border: 1px solid color-mix(in srgb, var(--teal) 35%, var(--line));
+        border-radius: 10px 5px 10px 5px;
+        background: color-mix(in srgb, var(--teal) 8%, var(--surface));
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .brain-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 9px;
+      }
+      .brain-button {
+        min-height: 38px;
+        padding: 9px 14px;
+        border: 1px solid var(--teal);
+        border-radius: 8px;
+        color: white;
+        background: var(--teal);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .brain-button.punish { border-color: var(--coral); background: var(--coral); }
+      .brain-button:hover { filter: brightness(1.08); }
+      .brain-button:focus-visible { outline: 3px solid color-mix(in srgb, var(--teal) 35%, transparent); outline-offset: 2px; }
+      .brain-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .brain-toggle input { width: 15px; height: 15px; accent-color: var(--teal); }
+      .brain-epsilon { display: grid; gap: 5px; margin: 12px 0; }
+      .brain-epsilon-line {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .brain-epsilon-line output {
+        color: var(--ink);
+        font: 700 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .brain-epsilon-meter {
+        height: 5px;
+        overflow: hidden;
+        border-radius: 99px;
+        background: var(--surface-soft);
+      }
+      .brain-epsilon-meter span {
+        display: block;
+        width: 0;
+        height: 100%;
+        border-radius: inherit;
+        background: #69a9bb;
+        transition: width 0.2s linear;
+      }
+      .brain-action-grid { display: grid; gap: 6px; }
+      .brain-action-row {
+        display: grid;
+        grid-template-columns: minmax(96px, 0.45fr) minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 9px;
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: 9px 4px 9px 4px;
+        background: color-mix(in srgb, var(--surface-soft) 43%, var(--surface));
+      }
+      .brain-action-row[data-chosen="true"] {
+        border-color: var(--teal);
+        background: color-mix(in srgb, var(--teal) 11%, var(--surface));
+      }
+      .brain-action-name { font-size: 11px; font-weight: 700; }
+      .brain-action-meter {
+        height: 5px;
+        overflow: hidden;
+        border-radius: 99px;
+        background: var(--surface-soft);
+      }
+      .brain-action-meter span {
+        display: block;
+        width: 0;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--teal);
+        transition: width 0.2s linear;
+      }
+      .brain-action-value {
+        color: var(--muted);
+        font: 700 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
       .learning-panel {
         margin-top: 14px;
         padding: 18px 19px 20px;
@@ -409,7 +522,10 @@
         .creature-stage { min-height: 320px; aspect-ratio: 0.98 / 1; }
         .habitat-caption { padding: 0 14px 13px; font-size: 10px; }
         .drive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-        .drives-panel, .learning-panel { padding: 15px 13px 16px; }
+        .drives-panel, .learning-panel, .brain-panel { padding: 15px 13px 16px; }
+        .brain-action-row { grid-template-columns: minmax(78px, 0.6fr) minmax(0, 1fr) auto; gap: 7px; }
+        .brain-controls { gap: 7px; }
+        .brain-button { flex: 1 1 auto; }
         .teach-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
         .teach-button { grid-column: 1 / -1; }
       }
@@ -426,11 +542,11 @@
     <main class="shell">
       <header class="page-header">
         <div>
-          <p class="eyebrow">Creatures · port visual L1</p>
-          <h1>Una vida pequeña.<br />Un cerebro en construcción.</h1>
-          <p class="page-description">Nilo se dibuja con paths vectoriales en Canvas. Sus ocho drives animan su expresión; el adaptador está conectado y el modelo cerebral sigue siendo provisional.</p>
+          <p class="eyebrow">Creatures · cerebro v0.5</p>
+          <h1>Una vida pequeña.<br />Un cerebro que aprende.</h1>
+          <p class="page-description">Nilo se dibuja con paths vectoriales en Canvas. Sus ocho drives animan su expresión y su cerebro —un MLP con ε-greedy y refuerzo Hebbiano— ya decide y aprende de tus premios y castigos.</p>
         </div>
-        <span class="phase-mark">FASE 0 · CANVAS 2D</span>
+        <span class="phase-mark">FASE 3 · CEREBRO V0.5</span>
       </header>
 
       <section class="habitat" aria-label="Hábitat de Nilo">
@@ -458,6 +574,37 @@
           <span class="drive-count">8 DRIVES</span>
         </div>
         <div id="drive-grid" class="drive-grid" aria-label="Niveles actuales de los drives"></div>
+      </section>
+
+      <section class="brain-panel" aria-labelledby="brain-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="brain-title">Cerebro de Nilo</h2>
+            <p>MLP de 15 entradas con ε-greedy y refuerzo Hebbiano: premia o castiga su última decisión.</p>
+          </div>
+          <output id="brain-stats" class="drive-count brain-stats" aria-label="Actividad del cerebro">0 decisiones · 0 refuerzos</output>
+        </div>
+        <p id="brain-decision" class="brain-decision" aria-live="polite">Sin decisión todavía</p>
+        <div class="brain-controls">
+          <button id="reward-button" class="brain-button" type="button">Premiar (+1)</button>
+          <button id="punish-button" class="brain-button punish" type="button">Castigar (−1)</button>
+          <label class="brain-toggle" for="auto-reward">
+            <input id="auto-reward" type="checkbox" checked />
+            Refuerzo automático por reducción de malestar
+          </label>
+        </div>
+        <p id="brain-feedback" class="vocab-feedback" role="status" aria-live="polite"></p>
+        <div class="brain-epsilon">
+          <div class="brain-epsilon-line">
+            <span>Exploración ε (suelo 5 %)</span>
+            <output id="brain-epsilon-value" aria-label="Exploración épsilon actual">0%</output>
+          </div>
+          <div class="brain-epsilon-meter" role="meter" aria-label="Exploración épsilon" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span id="brain-epsilon-fill"></span>
+          </div>
+        </div>
+        <div id="brain-action-grid" class="brain-action-grid" aria-label="Probabilidad de cada acción del cerebro"></div>
+        <p class="vocab-note">Cada acción viaja como un código en [-1, 1] (pasividad ↔ actividad). Con premios repetidos Nilo repite lo que le sienta bien; con castigos deja de hacerlo.</p>
       </section>
 
       <section class="learning-panel" aria-labelledby="vocab-title">

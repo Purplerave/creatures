@@ -1,41 +1,53 @@
 # Proyecto «Bichito» — sucesor moderno de Creatures (1996)
 
-Paquete de documentación completa del proyecto. Preparado el 2026-10-11 para el equipo
-(Tecnotron, DinoPablo, OpenCode y otras IAs).
+**Actualizado:** 12-oct-2026. Proyecto de ocio inspirado en *Creatures*: una mascota web con necesidades, genoma, aprendizaje, vocabulario y, más adelante, objetos y ciclo de vida. La criatura actual del repo se llama **Nilo**.
 
-## La idea
+**No es un producto vendible: es por puro disfrute.** Lo que fascinaba del original era ver que las criaturas aprendían. La idea es construir un sucesor web simplificado, tomando el diseño de *Creatures* como inspiración y no como una implementación literal de SVRules.
 
-Crear una criatura virtual web estilo *Creatures* (Creature Labs, 1996): red neuronal,
-ADN digital, necesidades, aprendizaje por premios/castigos, enseñarle palabras,
-nuevas generaciones con genoma mutado, exportar/importar estado.
+## Estado ejecutable del repo
 
-**No es un producto vendible: es por puro disfrute.** Lo que fascinaba del original
-era ver que las criaturas aprendían. Con IAs programando, los tiempos se comprimen
-muchísimo frente a las estimaciones a ritmo humano.
+La app TypeScript/Vite vive en `index.html` + `src/` (la forma recomendada de arrancarla es `npm ci && npm run dev`). Ya incluye el motor bioquímico determinista, visuales Canvas, genoma con mutación determinista, vocabulario con olvido y un cerebro MLP que aprende con recompensa. El avance de Fase 3 está implementado en la rama de trabajo, pendiente de revisión cruzada.
+
+El cerebro real (`src/brain/brain-v05.ts`) usa 15 entradas, una capa oculta `tanh`, cinco acciones con selección ε-greedy y aprendizaje Hebbiano modulado por premio/castigo. El panel de Nilo muestra probabilidades, exploración y contadores; los botones **Premiar/Castigar** permiten enseñar manualmente. El refuerzo automático por cambio de malestar está habilitado por defecto y se puede apagar para comparar. El módulo y las limitaciones están descritos en [`docs/CEREBRO.md`](docs/CEREBRO.md).
+
+**Límite actual:** no hay todavía mundo ni objetos interactivos; por tanto, la recompensa automática es poco contingente con la conducta y aún no se puede validar «aprender a buscar comida». La Fase 4 debe aportar objetos y efectos; el A/B sintético en tests verifica el mecanismo, no reemplaza ese hito de juego.
 
 ## Qué hay en este paquete
 
-| Archivo | Contenido |
+| Archivo o carpeta | Contenido |
 |---|---|
-| `bichito.html` | El proyecto actual: la criatura funcional en un solo HTML. Ábrelo en el navegador. |
-| `estudio-proyecto-creatures.html` | Página de estudio: anatomía del juego original, estado de openc2e/NORNBRAIN, enfoques modernos, comparación de arquitecturas, recomendación y **hoja de ruta por fases**. |
-| `estudio-creatures-revision-claude.md` | Documento del estudio preparado para revisión por Claude. |
-| `report.md` | Investigación técnica profunda (2026-10-11): genoma, cerebro SVRule, bioquímica, CAOS, openc2e y forks, técnicas modernas de aprendizaje/neuroevolución viables en JavaScript, alternativas de arquitectura y hoja de ruta. |
-| `notes/` | Notas de la investigación por bloques: arquitectura original, estado de openc2e, nornbrain/openc2e-nb, enfoques modernos. |
+| `index.html`, `src/` | App web TypeScript/Vite: bioquímica, visuales, cerebro, genoma, vocabulario y UI. |
+| `bichito.html` | Prototipo original en un solo HTML y fuente de algunos paths SVG. |
+| `estudio-proyecto-creatures.html` | Estudio del original, alternativas de arquitectura y hoja de ruta. |
+| `estudio-creatures-revision.md` | Revisión del estudio. |
+| `report.md` | Investigación técnica sobre genoma, SVRule, bioquímica, CAOS, proyectos relacionados y hoja de ruta. |
+| `docs/CEREBRO.md` | Modelo del cerebro v0.5, fórmulas, aprendizaje, recompensa y serialización. |
+| `docs/GENOME.md`, `docs/VOCAB.md` | Diseño e implementación de genoma y vocabulario. |
+| `docs/`, `notes/` | Arquitectura, estado, decisiones y notas de investigación. |
 
-## Hacia dónde queremos llevarlo (ampliación en curso)
+## Probar y desarrollar
 
-- Más grande y complejo, como el *Creatures* original.
-- Que aprenda con estímulos (premios/castigos).
-- Que juegue con la pelota.
-- Enseñarle palabras.
-- Nuevas generaciones con genoma mutado.
-- Exportar/importar el estado de la criatura.
+```bash
+npm ci
+npm run dev
+```
 
-## Recomendación técnica (del estudio)
+Para verificar la entrega:
 
-Reimplementación web simplificada desde cero, tomando el diseño de *Creatures* como
-especificación: genoma estructural + cerebro neuronal con aprendizaje hebbiano por
-refuerzo + bioquímica de drives/necesidades, modernizando el cerebro (p. ej. red
-líquida CfC o MLP pequeño con aprendizaje por refuerzo de drive-reduction) en lugar
-de clonar las SVRules al detalle.
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+La suite incluye pruebas unitarias del cerebro y una prueba smoke de la app en DOM simulado. GitHub Actions ejecuta typecheck, tests y build en pushes y pull requests.
+
+## Hacia dónde queremos llevarlo
+
+- **Fase 4:** mundo 2D con objetos funcionales (comer, jugar, acariciar) y acciones que tengan consecuencias. Esto permitirá una recompensa por reducción de drive ligada a la conducta y validar el aprendizaje de objetivos.
+- **Fase 5:** exportar/importar y guardar la partida en IndexedDB; el cerebro, el genoma y el vocabulario ya tienen serialización propia, falta coordinarlas desde la app.
+- Después: nuevas generaciones/genomas, más objetos, edad y ciclo de vida.
+
+## Decisiones pendientes
+
+La revisión cruzada debe ratificar el código escalar de las acciones frente a una alternativa one-hot, los mapeos provisionales de genes/estímulos y si el vocabulario alimentará `BrainInputs`. Ver [`docs/REVISIONES.md`](docs/REVISIONES.md). Cambiar un contrato aprobado se propone antes de tocarlo.
