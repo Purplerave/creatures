@@ -4,6 +4,9 @@
  * los visuales de Bichito los porta Tecnotron (contrato en contracts/ivisuals.ts).
  */
 import { BiochemEngine } from './biochem';
+import { BrainV05Adapter } from './brain/adapter';
+import { PlaceholderBrain } from './brain/placeholder-brain';
+import type { BrainInputs } from './contracts/ibrain';
 
 const canvas = document.getElementById('app') as HTMLCanvasElement;
 const context2d = canvas.getContext('2d');
@@ -18,9 +21,24 @@ const engine = new BiochemEngine({
 const driveIds = engine.listDrives();
 const chemicalIds = engine.listChemicals();
 
+// D1 — adaptador del cerebro v0.5 (interfaz IBrain). Placeholder temporal:
+// se reemplaza por la clase real de `tecnotron/brain-v05` cuando suba su rama
+// (solo cambia esta línea: el adaptador no conoce el MLP, ver docs/ADAPTER.md).
+const brain = new BrainV05Adapter(new PlaceholderBrain());
+let lastAction = 0;
+let lastConfidence = 0;
+
 let frame = 0;
 let simTime = 0;
 let last = performance.now();
+
+function brainInputs(tick: number): BrainInputs {
+  const drives: BrainInputs['drives'] = {};
+  for (const id of driveIds) drives[id] = engine.getDrive(id);
+  const chemicals: BrainInputs['chemicals'] = {};
+  for (const id of chemicalIds) chemicals[id] = engine.getChemical(id);
+  return { drives, chemicals, tick };
+}
 
 function draw(): void {
   const { width, height } = canvas;
@@ -68,6 +86,14 @@ function draw(): void {
     ctx.fillRect(280, y - 11, Math.round(level * 240), 12);
     y += 20;
   }
+
+  y += 14;
+  ctx.fillStyle = '#ffa657';
+  ctx.fillText('CEREBRO (adaptador v0.5)', 24, y);
+  y += 20;
+  ctx.fillStyle = '#e6edf3';
+  ctx.font = '13px monospace';
+  ctx.fillText(`acción ${lastAction.toFixed(3)}   confianza ${lastConfidence.toFixed(3)}`, 32, y);
 }
 
 function loop(now: number): void {
@@ -76,6 +102,9 @@ function loop(now: number): void {
   engine.tick(dt);
   simTime += dt;
   frame += 1;
+  const output = brain.think(brainInputs(frame));
+  lastAction = output.actions[0] ?? 0;
+  lastConfidence = output.debug?.confidence ?? 0;
   draw();
   requestAnimationFrame(loop);
 }
