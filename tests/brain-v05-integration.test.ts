@@ -100,9 +100,12 @@ describe('integración — bucle completo', () => {
       expect(output.debug?.confidence).toBeLessThanOrEqual(1);
       expect([0, 1]).toContain(output.debug?.explored);
     }
-    // El adaptador sigue exponiendo solo think + reinforce (regla D1 intacta).
+    // Regla D1 ampliada por la D2 (excepción autorizada por la CEO): el
+    // adaptador expone think + reinforce + getDebugState (puerto de
+    // depuración acotado para la vista L2). Ver tests/adapter-interface.test.ts
+    // y docs/ADAPTER.md §Debug. Ningún getter suelto.
     expect(Object.getOwnPropertyNames(Object.getPrototypeOf(runtime.brain)).filter((n) => n !== 'constructor').sort())
-      .toEqual(['reinforce', 'think']);
+      .toEqual(['getDebugState', 'reinforce', 'think']);
   });
 
   it('premiar/castigar desde la app refuerza la última decisión en la red', () => {

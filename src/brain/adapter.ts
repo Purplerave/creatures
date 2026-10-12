@@ -13,6 +13,10 @@
  *    (number[] en [-1, 1]) + `debug` opcional con confidence/explored.
  * 4. `reinforce(reward)` (reward en [-1, 1]) refuerza la ÚLTIMA acción de
  *    `think()`; sin `think()` previo es un no-op (no lanza).
+ * 5. EXCEPCIÓN D2 AUTORIZADA: `getDebugState()` — puerto de depuración
+ *    acotado pedido por la CEO para la vista L2 (`BrainDebugState`). Expone
+ *    SOLO acción/confianza/explored + arrays documentados; no filtra ε ni
+ *    arquitectura del MLP. Ver `docs/ADAPTER.md` (sección Debug).
  *
  * Mapeos PROVISIONALES (ver docs/ADAPTER.md):
  * - stimuli = [dopamina, cortisol, adenosina] → recompensa/apetito, estrés,
@@ -24,7 +28,7 @@
  */
 import type { BrainInputs, BrainOutput, IBrain } from '../contracts/ibrain';
 import type { DriveId } from '../contracts/types';
-import type { BrainV05Input, BrainV05Like } from './brainv05-types';
+import type { BrainDebugState, BrainV05Input, BrainV05Like, BrainV05Result } from './brainv05-types';
 
 /**
  * Orden fijo de los 8 drives en el vector de entrada (espejo del orden de
@@ -99,8 +103,8 @@ export class BrainV05Adapter implements IBrain {
   private readonly driveOrder: readonly DriveId[];
   private readonly mapStimuli: StimuliProvider;
   private readonly mapGenome: GenomeProvider;
-  /** Última acción enviada al cerebro; null = aún no se ha llamado a think(). */
-  private lastAction: number | null = null;
+  /** Último think() completo; null = aún no se ha llamado a think(). */
+  private lastThink: { result: BrainV05Result; genome: number[] } | null = null;
 
   constructor(brain: BrainV05Like, options: BrainV05AdapterOptions = {}) {
     this.brain = brain;
@@ -118,7 +122,7 @@ export class BrainV05Adapter implements IBrain {
     };
 
     const result = this.brain.think(vector);
-    this.lastAction = result.action;
+    this.lastThink = { result, genome: [...vector.genome] };
 
     return {
       actions: [clamp(result.action, -1, 1)],
@@ -134,8 +138,40 @@ export class BrainV05Adapter implements IBrain {
    * (se recorta al rango). Sin `think()` previo: no-op, no lanza.
    */
   reinforce(reward: number): void {
-    if (this.lastAction === null) return;
-    this.brain.reinforce(this.lastAction, clamp(reward, -1, 1));
+    if (this.lastThink === null) return;
+    this.brain.reinforce(this.lastThink.result.action, clamp(reward, -1, 1));
+  }
+
+  /**
+   * Puerto de depuración D2 (excepción autorizada, ver cabecera): estado
+   * para `src/render/brain-view.ts` (tarea L2 de lmarena).
+   *
+   * - `action`/`actionName`/`confidence`/`explored`/`genomeInputs` salen
+   *   SIEMPRE del último `think()` real del adaptador (o de la forma neutra
+   *   documentada si aún no ha habido ninguno; nunca lanza).
+   * - `hiddenActivations`/`outputWeights` los aporta el cerebro subyacente
+   *   SOLO si su debug los expone (hoy `BrainV05` real no los incluye: su
+   *   `BrainV05DebugState` trae scores/probabilities/lastDecision → siguen
+   *   `[]` hasta que la dueña del cerebro amplíe su debug); no se inventan.
+   */
+  getDebugState(): BrainDebugState {
+    const last = this.lastThink;
+    // Forma cruda (`RawDebugShape` = unknown): se normaliza abajo; solo se
+    // leen claves documentadas y `toNumberArray` valida cada array en runtime.
+    const underlying = (typeof this.brain.getDebugState === 'function'
+      ? this.brain.getDebugState()
+      : null) as Partial<BrainDebugState> | null;
+
+    return {
+      action: last ? last.result.action : 0,
+      actionName: last ? last.result.actionName : 'sin-think',
+      confidence: last ? clamp01(last.result.confidence) : 0,
+      explored: last ? Boolean(last.result.explored) : false,
+      hasThink: last !== null,
+      hiddenActivations: toNumberArray(underlying?.hiddenActivations),
+      outputWeights: toNumberArray(underlying?.outputWeights),
+      genomeInputs: last ? [...last.genome] : [],
+    };
   }
 }
 
@@ -147,6 +183,13 @@ function defaultStimuli(inputs: BrainInputs): number[] {
 /** Fallback del adaptador directo: [0,0,0,0]. La app usa createBrainRuntime(). */
 function defaultGenome(_inputs: BrainInputs): number[] {
   return [...GENOME_DEFAULT];
+}
+
+/** Copia un array de números si lo es; cualquier otra cosa ⇒ `[]`. */
+function toNumberArray(value: unknown): number[] {
+  return Array.isArray(value) && value.every((n) => typeof n === 'number')
+    ? [...value]
+    : [];
 }
 
 /** Copia hasta `size` valores (recorta/pilla) y los recorta a 0..1. */

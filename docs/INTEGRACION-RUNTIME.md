@@ -19,6 +19,10 @@ La app instancia `Vocabulary`, lo avanza con el mismo `dt` simulado y permite en
 
 El vocabulario todavía **no se pasa al cerebro**. `BrainV05Input` dispone de tres valores de estímulo y el contrato de `IVocab` deja pendiente cómo representar las palabras en esos inputs. No se inventa una codificación en esta integración; el mapeo requiere decisión de Tecnotron.
 
+## Depuración del cerebro (D2)
+
+`BrainV05Adapter.getDebugState()` devuelve un `BrainDebugState` (acción, confianza, si vino de exploración ε, activaciones ocultas, pesos de salida y los genes realmente enviados) para la vista de depuración `src/render/brain-view.ts` (tarea L2). Es una **excepción autorizada y acotada** a la regla del cerebro encapsulado; el contrato completo y sus reglas están en `docs/ADAPTER.md` (sección Debug). Con `BrainV05` real conectado, su debug trae otra forma (`BrainV05DebugState`: scores, probabilities, lastDecision); los arrays de activaciones/pesos siguen saliendo `[]` hasta que la dueña del cerebro amplíe su debug — no se inventan valores. La superficie pública del módulo se importa desde `src/brain/index.ts`.
+
 ## Cerebro real (conectado en esta rama)
 
 `createBrainRuntime()` recibe ahora una fábrica que instancia `BrainV05`

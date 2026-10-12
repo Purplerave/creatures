@@ -1,8 +1,7 @@
 # ADAPTER — D1: Adaptador del cerebro v0.5 (`BrainV05Adapter`)
 
-Estado: **D1 implementado y con el cerebro real conectado**. El adaptador sigue
-intacto (ni un campo ni un método nuevos: sus tests de interfaz lo fijan); lo que
-cambia es la fábrica del runtime, que ahora instancia `BrainV05`
+Estado: **D1 implementado y con el cerebro real conectado** y **D2: puerto de depuración `getDebugState()`** añadido como excepción documentada (los tests de interfaz fijan esa superficie ampliada). El resto del adaptador está intacto: lo que
+cambia en la fábrica del runtime es que ahora instancia `BrainV05`
 (`src/brain/brain-v05.ts`) en lugar del `PlaceholderBrain` temporal. El modelo,
 sus fórmulas y su espacio de acciones se documentan en
 [`CEREBRO.md`](CEREBRO.md); el placeholder se conserva en el repo para tests.
@@ -10,11 +9,19 @@ sus fórmulas y su espacio de acciones se documentan en
 ## Regla del cerebro encapsulado y desechable
 
 El adaptador es la única pieza que ofrece decisiones al resto del runtime a
-través de `IBrain`: expone `think()` y `reinforce()`, sin getters que filtren
-pesos o capas. La raíz de composición (`main.ts`) construye `BrainV05` y lee
-`getDebugState()` para el panel de diagnóstico; ese acceso de depuración no forma
-parte de `IBrain` ni altera la superficie aprobada del adaptador. Cambiar el
-modelo de decisión sigue concentrado en la fábrica del runtime.
+través de `IBrain`: expone `think()`, `reinforce()` y — como excepción D2
+autorizada — `getDebugState()`, sin getters que filtren pesos o capas. La
+raíz de composición (`main.ts`) construye `BrainV05` en su fábrica y además
+lee `getDebugState()` del modelo para su panel de diagnóstico propio; ese
+acceso no forma parte de `IBrain`. Cambiar de cerebro sigue concentrado en la
+fábrica del runtime (una línea), sin tocar al resto del proyecto.
+
+> **Excepción D2 autorizada:** `getDebugState()` es un **puerto de
+> depuración explícito** (método, no getter) pedido por la CEO para la vista
+> de depuración L2. Contradice la regla de «no exponer internals», así que
+> queda constancia de que es una excepción deliberada y **acotada** al
+> contrato `BrainDebugState` documentado abajo; no autoriza a exponer ε ni la
+> arquitectura del MLP, y añadir campos exige nueva autorización.
 
 ## Diagrama de flujo
 
@@ -45,6 +52,9 @@ BiochemEngine ──▶ BrainInputs (contracts/ibrain.ts)
    BrainV05Adapter.reinforce(reward ∈ [-1,1])
         → brain.reinforce(última acción de think, reward recortado)
         → sin think() previo: no-op (no lanza)
+                        │
+   BrainV05Adapter.getDebugState()   ← puerto D2 (excepción autorizada)
+        → BrainDebugState para la vista L2 (ver sección Debug)
 ```
 
 ## Mapeos provisionales (⚠️ confirmar con Tecnotron/CEO en el pad)
@@ -56,6 +66,44 @@ BiochemEngine ──▶ BrainInputs (contracts/ibrain.ts)
 | `genome` | `[alerta, sociabilidad, resiliencia, metabolismo]` (4 genes 0..1), ya conectado mediante `createBrainRuntime()` | Propuesta provisional inspirada en los rasgos del prototipo; confirmarla con Tecnotron. Configurable con `genomeInputGenes`. |
 | Salida | `actions = [clamp(action, -1, 1)]`, `debug = { confidence, explored }` | Rango del contrato `BrainOutput`. `BrainV05` devuelve el **código escalar** de la acción elegida (ver `src/brain/actions.ts`), así que el clamp es identidad. La alternativa one-hot exigiría tocar este adaptador y su test de interfaz: propuesta abierta en `REVISIONES.md` |
 | `reinforce` | `brain.reinforce(lastAction, clamp(reward,-1,1))`; sin `think()` previo ⇒ no-op | El adaptador recuerda solo la última acción |
+
+## Debug (D2): `getDebugState()` y `BrainDebugState`
+
+Puerto de depuración para `src/render/brain-view.ts` (tarea L2 de lmarena).
+Se consume desde la superficie pública del módulo:
+
+```ts
+import { BrainV05Adapter } from '../src/brain'; // o desde './brain'
+const state = brain.getDebugState(); // BrainDebugState
+```
+
+### Mapa de campos de `BrainDebugState`
+
+| Campo | Tipo | Significado | Disponible hoy |
+|---|---|---|---|
+| `action` | `number` | Acción elegida en el **último** `think()`; `0` si no hay ninguno | ✅ siempre (real) |
+| `actionName` | `string` | Nombre legible de esa acción; `'sin-think'` si no ha habido `think()` | ✅ siempre (real) |
+| `confidence` | `number` | Confianza de la decisión, recortada a 0..1; `0` sin `think()` | ✅ siempre (real) |
+| `explored` | `boolean` | `true` si la acción salió de la exploración ε (no del argmax) | ✅ siempre (real) |
+| `hasThink` | `boolean` | `false` ⇒ aún no se ha llamado a `think()` y el resto es neutro | ✅ siempre |
+| `hiddenActivations` | `number[]` | Activaciones de la capa oculta, en orden de neurona | ⚠️ `[]` — `BrainV05` real ya está conectado, pero su debug (`BrainV05DebugState`) expone scores/probabilities/lastDecision, **no** estas claves; rellenarlas requiere que la dueña del cerebro amplíe su debug (pendiente de CEO) |
+| `outputWeights` | `number[]` | Pesos de la capa de salida, plano (fila a fila) | ⚠️ `[]` — ídem (solo trae `weightNorm`/`weightAbsMax`, no la matriz) |
+| `genomeInputs` | `number[]` | Los 4 genes (0..1) realmente enviados como `input.genome` en el último `think()`; `[]` sin `think()` | ✅ siempre (lo aporta el adaptador) |
+
+### Reglas del puerto
+
+1. **Nunca lanza**: sin `think()` previo devuelve el estado neutro documentado
+   (`hasThink: false`, `action: 0`, arrays vacíos).
+2. `action`/`actionName`/`confidence`/`explored`/`genomeInputs` salen
+   **siempre del último `think()` del adaptador** (fuente de verdad), aunque
+   el cerebro subyacente implemente `getDebugState?()`.
+3. `hiddenActivations`/`outputWeights` los lee de la forma cruda del cerebro
+   subyacente **si su debug los incluye** (hoy `BrainV05` no los incluye →
+   `[]`); `PlaceholderBrain` devuelve arrays vacíos. Normalización con
+   `toNumberArray` (cualquier otra cosa → `[]`, sin inventar valores).
+4. **Excepción acotada**: es método (no getter) y solo expone estos campos;
+   no expone ε, capas ni arquitectura. Cualquier ampliación necesita
+   autorización nueva (constancia en `tests/adapter-interface.test.ts`).
 
 ## Composición de runtime
 
@@ -79,9 +127,14 @@ El adaptador no decide cuándo reforzar, solo recuerda la última acción.
 ## Archivos
 
 - `src/brain/brainv05-types.ts` — interfaz estructural mínima `BrainV05Like`
-  (`think`/`reinforce`/`serialize`/`deserialize`/`dispose` + shapes).
-- `src/brain/adapter.ts` — `BrainV05Adapter implements IBrain` + `reinforce()`,
-  constantes `DRIVE_ORDER`/`STIMULUS_CHEMICALS` y providers.
+  (`think`/`reinforce`/`getDebugState?`/`serialize`/`deserialize`/`dispose` +
+  shapes) y el contrato `BrainDebugState`.
+- `src/brain/index.ts` — **superficie pública** del módulo (D2): re-exporta
+  adaptador, runtime, placeholder, constantes y tipos para que consumidores
+  (p. ej. la vista L2) no importen internos.
+- `src/brain/adapter.ts` — `BrainV05Adapter implements IBrain` +
+  `reinforce()` + `getDebugState()`, constantes `DRIVE_ORDER`/
+  `STIMULUS_CHEMICALS` y providers.
 - `src/brain/runtime.ts` — une `Genome`, fenotipo, fábrica cerebral y vector genómico.
 - `src/brain/brain-v05.ts` — el cerebro real: MLP 15 → `hiddenSize` → 5
   acciones, ε-greedy con suelo 5 %, Hebbiano por recompensa, serializable y
@@ -92,7 +145,8 @@ El adaptador no decide cuándo reforzar, solo recuerda la última acción.
 - `src/brain/placeholder-brain.ts` — salida neutra constante (acción 0,
   confianza 0); ya no se usa en la app, se mantiene para tests y regresión.
 - `src/main.ts` — compone motor, adaptador, visuales y `Vocabulary` en un único bucle.
-- `tests/adapter-*.test.ts`, `tests/brain-runtime.test.ts` (+ helper `tests/fake-brain.ts`).
+- `tests/adapter-*.test.ts` (incl. `adapter-debug.test.ts`, D2),
+  `tests/brain-runtime.test.ts` (+ helper `tests/fake-brain.ts`).
 - `src/brain/stub.ts` — se mantiene intacto (sin eliminar nada de Fase 0).
 
 ## Estado de la lista anterior (actualizado en esta rama)
