@@ -7,7 +7,7 @@
  * main.ts y los tests compilen y funcionen contra el mismo shape.
  * No copiar ni inventar el MLP aquí (regla del cerebro encapsulado).
  */
-import type { BrainV05Input, BrainV05Like, BrainV05Result } from './brainv05-types';
+import type { BrainDebugState, BrainV05Input, BrainV05Like, BrainV05Result } from './brainv05-types';
 
 export class PlaceholderBrain implements BrainV05Like {
   think(_input: BrainV05Input): BrainV05Result {
@@ -16,6 +16,25 @@ export class PlaceholderBrain implements BrainV05Like {
 
   reinforce(_action: number, _reward: number): void {
     // Sin estado que reforzar: no-op.
+  }
+
+  /**
+   * Puerto de depuración D2. NO hay MLP real, así que no hay activaciones
+   * ni pesos que mostrar: se devuelven los arrays VACÍOS documentados en
+   * `BrainDebugState` (no se inventan valores). El adaptador rellena
+   * acción/confianza/explored/genomeInputs con su último `think()`.
+   */
+  getDebugState(): BrainDebugState {
+    return {
+      action: 0,
+      actionName: 'placeholder',
+      confidence: 0,
+      explored: false,
+      hasThink: false,
+      hiddenActivations: [],
+      outputWeights: [],
+      genomeInputs: [],
+    };
   }
 
   serialize(): string {

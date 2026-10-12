@@ -34,6 +34,60 @@ export interface BrainV05Result {
 }
 
 /**
+ * Estado de depuración del cerebro (D2) para la vista de depuración L2
+ * (`src/render/brain-view.ts`, tarea de lmarena).
+ *
+ * ⚠️ EXCEPCIÓN AUTORIZADA Y ACOTADA a la regla del cerebro encapsulado: la
+ * CEO pidió exponer estos campos concretos para la vista de depuración. Es
+ * un puerto de debug explícito, NO una apertura del MLP: no expone capas,
+ * arquitectura ni ε; solo lo listado abajo. Añadir más campos requiere nueva
+ * autorización.
+ *
+ * Mientras no haya un MLP real en el repositorio (`tecnotron/brain-v05`
+ * sigue sin subirse y solo existe `PlaceholderBrain`), los arrays internos
+ * (`hiddenActivations`, `outputWeights`) vienen VACÍOS: no se inventan pesos
+ * ni activaciones falsas.
+ */
+export interface BrainDebugState {
+  /** Acción elegida en el último `think()`; 0 si aún no ha habido ninguno. */
+  action: number;
+  /** Nombre legible de la última acción; `'sin-think'` si aún no ha habido. */
+  actionName: string;
+  /** Confianza 0..1 de la última decisión; 0 si aún no ha habido `think()`. */
+  confidence: number;
+  /** true si la última acción salió de la exploración ε (no del argmax). */
+  explored: boolean;
+  /** true si ya hubo al menos un `think()`; si es false el resto es neutro. */
+  hasThink: boolean;
+  /**
+   * Activaciones de la capa oculta, en orden de neurona.
+   * `[]` = el cerebro conectado no las expone aún (ver cabecera y §Debug).
+   */
+  hiddenActivations: number[];
+  /**
+   * Pesos de la capa de salida (plano, fila a fila).
+   * `[]` = el cerebro conectado no los expone aún (ver cabecera y §Debug).
+   */
+  outputWeights: number[];
+  /**
+   * Los 4 genes realmente enviados como `input.genome` en el último
+   * `think()` (0..1); `[]` = aún no se ha pensado. Lo aporta el adaptador,
+   * que es quien construye el vector.
+   */
+  genomeInputs: number[];
+}
+
+/**
+ * Formas crudas conocidas del puerto `getDebugState?()`: la del adaptador
+ * (`BrainDebugState`), la del MLP real (`BrainV05DebugState` en
+ * `brain-v05.ts`: scores/probabilities/lastDecision/…) o la placeholder.
+ * La interfaz declara `unknown` a propósito — TypeScript rechaza uniones de
+ * solo-opcionales sin propiedades en común (weak types, TS2559) — y el
+ * adaptador normaliza con `toNumberArray` (valida en runtime, nunca inventa).
+ */
+export type RawDebugShape = unknown;
+
+/**
  * Superficie pública mínima del cerebro brain-v05 que usa el adaptador.
  * (`think` y `reinforce` son los que se llaman; `serialize`/`deserialize`/
  * `dispose` se declaran porque forman parte del contrato público del cerebro
@@ -44,6 +98,13 @@ export interface BrainV05Like {
   think(input: BrainV05Input): BrainV05Result;
   /** Refuerzo de la acción `action` con recompensa `reward` en [-1, 1]. */
   reinforce(action: number, reward: number): void;
+  /**
+   * Puerto de depuración OPCIONAL (D2, excepción autorizada — ver
+   * `BrainDebugState`). Forma cruda (`RawDebugShape`): el adaptador lo
+   * llama solo si existe y normaliza con `toNumberArray`; sin él → forma
+   * placeholder documentada.
+   */
+  getDebugState?(): RawDebugShape;
   /** Serializa el estado del cerebro (pesos, ε, etc.) a string. */
   serialize(...args: unknown[]): unknown;
   /** Restaura el estado serializado. */
