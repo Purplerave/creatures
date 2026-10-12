@@ -154,7 +154,7 @@ Cada fase: rama propia → typecheck+tests+build en verde → revisión CEO → 
 ## 8. Fuentes principales (por línea)
 
 - **A (arqueología):** creatures.wiki/Genome · /GEN_files · /Genetics · /Mutation · /Biochemistry · /Brain · /Reinforcement · /Ageing · /Disease · Wikipedia `Creatures_(video_game_series)`, `Creatures_(1996_video_game)` · `Spore`, `Avida`, `Tierra`, `Niche`, `OpenWorm` — todas consultadas 12-oct-2026.
-- **B (ciencia):** Wikipedia `Genetic_code` · Izhikevich 2003 (10.1162/089976603321780272) · Schultz 1997 (10.1126/science.275.5301.817) · NEAT (10.1162/089976602320169811) · Distill Neural CA (10.23915/distill.00020001) · OpenWorm.
+- **B (ciencia):** Wikipedia `Genetic_code` · Izhikevich 2003 (DOI verificado vía Crossref: `10.1109/tnn.2003.820440`) · Schultz 1997 (DOI verificado: `10.1126/science.275.5306.1593`) · NEAT (DOI verificado: `10.1162/106365602320169811`) · Distill Neural CA (https://distill.pub/2020/growing-ca/, vivo; DOI de Crossref NO ENCONTRADO) · OpenWorm.
 - **C (libros/datos):** OpenLibrary (Grand ×2, Holland, Langton, Prusinkiewicz) · `mercere99/Avida`, `Chakazul/Lenia`, `bioerrorlog/Tierra` · NCBI genetic code tables · Kazusa · Reactome/BiGG · Movebank · CRCNS.
 
 ---
