@@ -25,17 +25,24 @@ creatures/
 ├── vite.config.ts        # build → dist/
 ├── docs/FASE0.md         # este documento
 ├── src/
-│   ├── main.ts           # arranque + snapshots para el puerto visual y la UI de drives
+│   ├── main.ts           # composición del runtime, snapshots y UI de drives/vocabulario
 │   ├── contracts/        # CONTRATOS (interfaces tipo acuerdo entre módulos)
 │   │   ├── types.ts      # DriveId, DriveState, ChemicalId, TickResult
 │   │   ├── ibrain.ts     # IBrain { think(inputs) → BrainOutput }
 │   │   ├── ibiochem.ts   # IBiochem { tick, getDrive, getChemical }
-│   │   └── ivisuals.ts   # IVisuals (puerto Canvas de solo lectura)
+│   │   ├── ivisuals.ts   # IVisuals (puerto Canvas de solo lectura)
+│   │   ├── igenome.ts    # IGenome + PhenotypeConfig
+│   │   └── ivocab.ts     # IVocab (palabra → estímulo, con olvido)
 │   ├── brain/
-│   │   └── stub.ts       # stub desechable de IBrain (neutro)
+│   │   ├── brainv05-types.ts # contrato estructural del modelo v0.5
+│   │   ├── adapter.ts       # BrainV05Adapter: BrainInputs → BrainV05Like
+│   │   ├── runtime.ts       # conecta Genome, fenotipo y adaptador
+│   │   └── placeholder-brain.ts # cerebro temporal, sin aprendizaje
+│   ├── genome/          # genes extensibles, PRNG, mutación y fenotipo
+│   ├── vocab/            # Vocabulary implements IVocab
 │   ├── visuals/
 │   │   └── canvasVisuals.ts # paths de Bichito, estados de ánimo y animación procedural
-│   └── biochem/          # MOTOR de bioquímica (Fase 0)
+│   └── biochem/          # MOTOR de bioquímica (Fase 0 + capa phenotype)
 │       ├── driveTable.ts # tabla extensible de drives (los 8 + registerDrive)
 │       ├── chemicals.ts  # registro de químicos (6 + registerChemical)
 │       ├── reactions.ts  # reacciones A→B y acoplamientos drive↔chemical
@@ -49,9 +56,9 @@ creatures/
 | Contrato | Quién lo implementa | Quién lo consume |
 |---|---|---|
 | `IBiochem` (`src/contracts/ibiochem.ts`) | **Yo (Fase 0)** → `biochem/engine.ts` | cerebro (inputs por tick) y visuales (snapshot para dibujar) |
-| `IBrain` (`src/contracts/ibrain.ts`) | **Tecnotron** (MLP + ε-exploración); hoy hay un stub desechable en `src/brain/stub.ts` | bucle principal: recibe `BrainInputs` (drives + químicos), devuelve `BrainOutput.actions` |
+| `IBrain` (`src/contracts/ibrain.ts`) | `BrainV05Adapter` sobre `BrainV05Like`; la app usa `PlaceholderBrain` mientras falta el modelo real | `main.ts` le pasa snapshots de drives/químicos y el runtime mapea genes |
 | `IVisuals` (`src/contracts/ivisuals.ts`) | `visuals/canvasVisuals.ts` (`CanvasVisuals`) — port de Bichito a Canvas 2D | `main.ts` le pasa snapshots; el render nunca toca la simulación |
-| Genoma/mutación y palabras | **OpenCode** (futuro) | consumirá los mismos tipos de `contracts/types.ts` |
+| Genoma y palabras | `Genome` (`src/genome/`) y `Vocabulary` (`src/vocab/`) | el runtime aplica fenotipo al motor; la UI enseña vocabulario; su codificación cerebral sigue pendiente |
 
 Regla común: los contratos son interfaces pequeñas; cada módulo es sustituible
 implementando su interfaz. El cerebro y el render **leen** snapshots; solo el
@@ -143,7 +150,19 @@ curiosidad, vínculo, aburrimiento, miedo y confort (`happy` / `sad` / `sleepy` 
 `excited`). Respiración, parpadeo, brillo de antenas y salto se calculan de forma
 periódica con el tiempo simulado, sin `Math.random()`.
 
+## Runtime: genoma y vocabulario
+
+`Genome.getPhenotype()` alimenta `BiochemEngine` y los knobs de la fábrica del
+cerebro mediante `createBrainRuntime()`. El vector genómico de cuatro entradas
+usa por ahora `[alerta, sociabilidad, resiliencia, metabolismo]`, una propuesta
+inspirada en los rasgos del prototipo y pendiente de validación de Tecnotron.
+
+`Vocabulary` avanza con el mismo tiempo simulado y se puede enseñar desde la UI.
+La asociación de palabras todavía no forma parte de `BrainInputs`: falta acordar
+cómo representar palabras en los tres canales de estímulo.
+
 ## Estado / siguientes pasos
 
-- Fase 0 completo: andamiaje, motor de bioquímica, contratos y port visual de Bichito a Canvas (`CanvasVisuals`).
-- Pendiente (otros módulos): cerebro real (Tecnotron), genoma/mutación y palabras (OpenCode).
+- Fase 0 y port visual L1: implementados.
+- Genoma y vocabulario: implementados; composición del runtime y UI de enseñanza disponibles.
+- Pendiente: integrar un cerebro real en lugar de `PlaceholderBrain` y validar con Tecnotron los mapeos de genes, estímulos y vocabulario.

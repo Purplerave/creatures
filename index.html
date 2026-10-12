@@ -270,6 +270,128 @@
       .drive-card:nth-child(4n + 2) .drive-meter span { background: var(--amber); }
       .drive-card:nth-child(4n + 3) .drive-meter span { background: #69a9bb; }
       .drive-card:nth-child(4n + 4) .drive-meter span { background: var(--coral); }
+      .learning-panel {
+        margin-top: 14px;
+        padding: 18px 19px 20px;
+        border: 1px solid var(--line);
+        border-radius: 12px 22px 12px 22px;
+        background: var(--surface);
+      }
+      .learning-panel .panel-heading { flex-wrap: wrap; }
+      .vocab-stats {
+        max-width: 50%;
+        white-space: normal;
+        text-align: right;
+      }
+      .teach-form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(150px, 0.7fr) auto;
+        align-items: end;
+        gap: 9px;
+      }
+      .teach-field {
+        display: grid;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .teach-field input,
+      .teach-field select {
+        width: 100%;
+        min-width: 0;
+        padding: 10px 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--ink);
+        background: var(--surface-soft);
+        font: inherit;
+        font-weight: 500;
+      }
+      .teach-field input:focus,
+      .teach-field select:focus {
+        outline: 2px solid color-mix(in srgb, var(--teal) 35%, transparent);
+        border-color: var(--teal);
+      }
+      .teach-button {
+        min-height: 39px;
+        padding: 9px 13px;
+        border: 1px solid var(--teal);
+        border-radius: 8px;
+        color: white;
+        background: var(--teal);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .teach-button:hover { filter: brightness(1.08); }
+      .teach-button:focus-visible { outline: 3px solid color-mix(in srgb, var(--teal) 35%, transparent); outline-offset: 2px; }
+      .vocab-feedback {
+        min-height: 18px;
+        margin: 9px 0 10px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .vocab-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .vocab-empty {
+        grid-column: 1 / -1;
+        margin: 0;
+        padding: 9px 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .vocab-entry {
+        min-width: 0;
+        padding: 10px 11px;
+        border: 1px solid var(--line);
+        border-radius: 10px 5px 10px 5px;
+        background: color-mix(in srgb, var(--surface-soft) 43%, var(--surface));
+      }
+      .vocab-entry-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .vocab-word { overflow-wrap: anywhere; font-size: 12px; }
+      .vocab-status {
+        flex: 0 0 auto;
+        color: var(--muted);
+        font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+        text-transform: uppercase;
+      }
+      .vocab-status.learned { color: var(--teal-dark); }
+      .vocab-association {
+        overflow: hidden;
+        margin: 3px 0 8px;
+        color: var(--muted);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .vocab-meter {
+        height: 5px;
+        overflow: hidden;
+        border-radius: 99px;
+        background: var(--surface-soft);
+      }
+      .vocab-meter span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--amber);
+        transition: width 0.2s linear;
+      }
+      .vocab-note {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 10px;
+      }
       .footnote {
         margin: 12px 4px 0;
         color: var(--muted);
@@ -287,12 +409,16 @@
         .creature-stage { min-height: 320px; aspect-ratio: 0.98 / 1; }
         .habitat-caption { padding: 0 14px 13px; font-size: 10px; }
         .drive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-        .drives-panel { padding: 15px 13px 16px; }
+        .drives-panel, .learning-panel { padding: 15px 13px 16px; }
+        .teach-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+        .teach-button { grid-column: 1 / -1; }
       }
       @media (max-width: 390px) {
         .page-header { display: block; }
         .phase-mark { display: inline-flex; margin-top: 12px; }
         .creature-stage { min-height: 300px; }
+        .teach-form, .vocab-list { grid-template-columns: 1fr; }
+        .teach-button { grid-column: auto; }
       }
     </style>
   </head>
@@ -301,8 +427,8 @@
       <header class="page-header">
         <div>
           <p class="eyebrow">Creatures · port visual L1</p>
-          <h1>Una vida pequeña.<br />Un cerebro que siente.</h1>
-          <p class="page-description">Nilo se dibuja con paths vectoriales en Canvas. Su expresión y sus movimientos se calculan a partir de sus ocho drives.</p>
+          <h1>Una vida pequeña.<br />Un cerebro en construcción.</h1>
+          <p class="page-description">Nilo se dibuja con paths vectoriales en Canvas. Sus ocho drives animan su expresión; el adaptador está conectado y el modelo cerebral sigue siendo provisional.</p>
         </div>
         <span class="phase-mark">FASE 0 · CANVAS 2D</span>
       </header>
@@ -332,6 +458,34 @@
           <span class="drive-count">8 DRIVES</span>
         </div>
         <div id="drive-grid" class="drive-grid" aria-label="Niveles actuales de los drives"></div>
+      </section>
+
+      <section class="learning-panel" aria-labelledby="vocab-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="vocab-title">Palabras que aprende Nilo</h2>
+            <p>Enseña una asociación y refuérzala con repeticiones.</p>
+          </div>
+          <output id="vocab-stats" class="drive-count vocab-stats" aria-label="Estadísticas del vocabulario" aria-live="polite">0 palabras · 0/0 asociaciones aprendidas</output>
+        </div>
+        <form id="teach-form" class="teach-form">
+          <label class="teach-field" for="word-input">
+            Palabra
+            <input id="word-input" name="word" maxlength="32" autocomplete="off" placeholder="p. ej. pelota" />
+          </label>
+          <label class="teach-field" for="stimulus-select">
+            Asociar con
+            <select id="stimulus-select" name="stimulus">
+              <option value="comida">Comida</option>
+              <option value="objeto:pelota">Pelota</option>
+              <option value="luz:suave">Luz suave</option>
+            </select>
+          </label>
+          <button class="teach-button" type="submit">Enseñar asociación</button>
+        </form>
+        <p id="vocab-feedback" class="vocab-feedback" role="status" aria-live="polite"></p>
+        <div id="vocab-list" class="vocab-list" aria-label="Asociaciones aprendidas"></div>
+        <p class="vocab-note">El vocabulario ya aprende y olvida por tiempo simulado; su entrada al cerebro queda pendiente de acordar.</p>
       </section>
 
       <p class="footnote">El render es un puerto de solo lectura: la simulación conserva la autoridad sobre el estado.</p>

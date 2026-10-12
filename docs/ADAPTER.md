@@ -1,8 +1,8 @@
 # ADAPTER — D1: Adaptador del cerebro v0.5 (`BrainV05Adapter`)
 
-Estado: **D1 implementado** en la rama `dinopablo/brain-adapter`. El cerebro
-real (`tecnotron/brain-v05`, de Tecnotron) **aún no estaba en el remoto** al
-implementar, así que se usa un **placeholder temporal**
+Estado: **D1 implementado** en la rama `dinopablo/brain-adapter`. La
+implementación real buscada en `tecnotron/brain-v05` **aún no estaba en el
+remoto** al implementar, así que se usa un **placeholder temporal**
 (`src/brain/placeholder-brain.ts`) tras la misma interfaz estructural.
 
 ## Regla del cerebro encapsulado y desechable
@@ -49,33 +49,44 @@ BiochemEngine ──▶ BrainInputs (contracts/ibrain.ts)
 |---|---|---|
 | `drives` | Orden fijo `DRIVE_ORDER` = `[hambre, energia, sueno, curiosidad, vinculo, aburrimiento, miedo, confort]` (espejo del registro de `driveTable.ts`), `level` recortado a 0..1; drive ausente ⇒ 0 | Contrato de 8 entradas; cambiar el orden rompe pesos ya entrenados |
 | `stimuli` | `[dopamina, cortisol, adenosina]` normalizados a 0..1 (ausente ⇒ 0) | Ejes que más pesan en una decisión: recompensa/apetito, estrés, fatiga. Sustituible con `options.mapStimuli` |
-| `genome` | `[0, 0, 0, 0]` — **pendiente de cablear genoma** | Sustituible con `options.mapGenome`; helper listo: `genomeProvider(getGene, ids)` sobre `Genome.getGene()` |
+| `genome` | `[alerta, sociabilidad, resiliencia, metabolismo]` (4 genes 0..1), ya conectado mediante `createBrainRuntime()` | Propuesta provisional inspirada en los rasgos del prototipo; confirmarla con Tecnotron. Configurable con `genomeInputGenes`. |
 | Salida | `actions = [clamp(action, -1, 1)]`, `debug = { confidence, explored }` | Rango del contrato `BrainOutput`. Si `action` es índice discreto 0..n-1, valorar one-hot de longitud n |
 | `reinforce` | `brain.reinforce(lastAction, clamp(reward,-1,1))`; sin `think()` previo ⇒ no-op | El adaptador recuerda solo la última acción |
+
+## Composición de runtime
+
+`src/brain/runtime.ts` expone `createBrainRuntime(genome, brainFactory, options)`:
+resuelve una vez `Genome.getPhenotype()`, entrega sus knobs a la fábrica del
+cerebro y configura `BrainV05Adapter` con un `genomeProvider`. `main.ts` pasa ese
+mismo fenotipo a `BiochemEngine`. Los genes de entrada se consultan al hacer
+cada `think()`; si cambia el genoma, el vector cambia, pero para recalcular el
+fenotipo/los knobs del motor se reconstruye el runtime.
+
+El vocabulario se avanza con el mismo `dt` y se puede enseñar desde la UI. **No
+se envía aún a `BrainInputs`**: el mapeo a los tres estímulos requiere decisión
+de Tecnotron, para no codificar una interpretación no aprobada.
 
 ## Archivos
 
 - `src/brain/brainv05-types.ts` — interfaz estructural mínima `BrainV05Like`
   (`think`/`reinforce`/`serialize`/`deserialize`/`dispose` + shapes).
 - `src/brain/adapter.ts` — `BrainV05Adapter implements IBrain` + `reinforce()`,
-  constantes `DRIVE_ORDER`/`STIMULUS_CHEMICALS`/`GENOME_DEFAULT` y providers.
+  constantes `DRIVE_ORDER`/`STIMULUS_CHEMICALS` y providers.
+- `src/brain/runtime.ts` — une `Genome`, fenotipo, fábrica cerebral y vector genómico.
 - `src/brain/placeholder-brain.ts` — **temporal**: salida neutra constante
-  (acción 0, confianza 0). NO es un MLP; se reemplaza en este único fichero
-  cuando suba `tecnotron/brain-v05`.
-- `src/main.ts` — instancia el adaptador en bucle de render (sustituye al stub).
-- `tests/adapter-vector.test.ts`, `tests/adapter-reinforce.test.ts`,
-  `tests/adapter-interface.test.ts` (+ helper `tests/fake-brain.ts`).
+  (acción 0, confianza 0). No aprende; la fábrica permite sustituirlo por un modelo real.
+- `src/main.ts` — compone motor, adaptador, visuales y `Vocabulary` en un único bucle.
+- `tests/adapter-*.test.ts`, `tests/brain-runtime.test.ts` (+ helper `tests/fake-brain.ts`).
 - `src/brain/stub.ts` — se mantiene intacto (sin eliminar nada de Fase 0).
 
-## Qué falta al llegar `tecnotron/brain-v05`
+## Pendiente de revisión e integración del cerebro real
 
-1. Verificar que la clase real satisface `BrainV05Like` estructuralmente
-   (si no, solo ajustar `brainv05-types.ts` — no el adaptador).
-2. En `src/main.ts`, cambiar `new PlaceholderBrain()` por la clase real
-   (import desde la rama/merge de la CEO). Borrar `placeholder-brain.ts`.
-3. Confirmar en el pad: orden/contenido de `stimuli`, origen del `genoma`
-   (¿4 genes de `src/genome/`? ¿cuáles?) y si `action` es escalar o índice
-   discreto (one-hot).
-4. Cablear `genomeProvider(...)` con el `Genome` real y los knobs del
-   fenotipo (`hiddenSize`, `epsilonInitial`, `learningRate`) al construir el
-   cerebro.
+1. Sustituir la fábrica `(_knobs) => new PlaceholderBrain()` por la clase real,
+   consumiendo `hiddenSize`, `epsilonInitial` y `learningRate`.
+2. Verificar que la clase satisface `BrainV05Like`; ajustar solo la superficie
+   estructural si hace falta, sin filtrar los detalles del modelo al resto.
+3. Tecnotron debe confirmar el mapeo provisional de los cuatro genes y los
+   estímulos; también queda pendiente decidir cómo (o si) el vocabulario entra
+   en `BrainInputs` y si la acción es escalar o índice discreto.
+4. Mantener el placeholder hasta que el cerebro real esté disponible; no se
+   inventa otro MLP dentro del placeholder.
