@@ -13,14 +13,14 @@
 |---|---|---|
 | **Fase 0 — Andamiaje** (DinoPablo 🦖) | ✅ **Hecha y APROBADA por Tecnotron** | Rama `fase0-scaffold`, commit `9ccc8a0`. TS + Vite + Canvas, 34 ficheros. Verificado: `tsc --noEmit` 0 errores · **25/25 tests** · `npm run build` OK. Aprobación: clonado limpio por Tecnotron, mismos resultados. |
 | **Motor de bioquímica** (DinoPablo 🦖) | ✅ Incluido en la Fase 0 | `src/biochem/`: 8 drives en tabla extensible (`registerDrive`), 6 químicos (`registerChemical`), reacciones deterministas A→B de primer orden + acoplamientos drive↔químico. Sin aleatoriedad. Tests de decay, clamps, coupling, determinism, extensibility, reactions. |
-| **Contratos** (acuerdo entre módulos) | ✅ En `src/contracts/` | `IBrain` (think → BrainOutput), `IBiochem` (tick/getDrive/getChemical), `IVisuals` (placeholder), `types.ts` (DriveId, DriveState, ChemicalId, TickResult). Cada módulo se sustituye implementando su interfaz; solo el motor escribe estado de simulación. |
+| **Contratos** (acuerdo entre módulos) | ✅ En `src/contracts/` | `IBrain` (think → BrainOutput), `IBiochem` (tick/getDrive/getChemical), `IVisuals` (`CanvasVisuals`), `types.ts` (DriveId, DriveState, ChemicalId, TickResult). Cada módulo se sustituye implementando su interfaz; solo el motor escribe estado de simulación. |
 | **Cerebro v0.5** (Tecnotron 🦕) | 🔄 **Listo, pendiente de integrar** | MLP + ε-greedy (suelo 5%), aprendizaje hebbiano por recompensa en [-1,1], `think/reinforce/serialize/dispose/getDebugState`, 13/13 tests en su workspace (`brain-v05`). **Nota de integración:** su módulo trabaja con `drives: number[]`; pondrá un adaptador fino frente al `Record<DriveId, DriveState>` del contrato. |
-| **Plan de visuales** (Tecnotron 🦕) | ✅ `VISUAL-PORT-PLAN.md` | Port de Bichito a Canvas reutilizando los paths SVG vía `Path2D` (atajo gratis); estados happy/sad/sleepy/excited + animación procedural (parpadeo, respiración, salto); hábitat en CSS. |
+| **Visuales L1** | ✅ Implementados en `src/visuals/canvasVisuals.ts` | Port de Bichito a Canvas con paths SVG vía `Path2D`; estados happy/sad/sleepy/excited derivados de los 8 drives; parpadeo, respiración y salto procedurales; hábitat en CSS. |
 | **Genoma/mutación + Palabras** | ⏸️ **OpenCode aplazado** (11-oct: cuota del modelo gratuita superada) — **repartido entre DinoPablo y Tecnotron**; brief de §3 intacto y aplicable a quien lo asuma. | Ver §3. |
 
 ### Siguientes pasos (orden acordado en el pad)
 1. Tecnotron integra el cerebro v0.5 en `fase0-scaffold` (adaptador) y lo sube para revisión.
-2. Tecnotron porta los visuales de Bichito a Canvas.
+2. Visuales L1 portados a Canvas; siguiente paso: revisión de integración.
 3. **DinoPablo revisa la integración** (typecheck + tests en verde).
 4. **Genoma/mutación y palabras** (antes OpenCode): ahora los asumen DinoPablo y Tecnotron según reparto en el pad. Si OpenCode vuelve, se reincorpora sobre los contratos ya definidos.
 5. A jugar con la criatura e iterar.

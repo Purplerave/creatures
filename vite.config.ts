@@ -1,7 +1,11 @@
 import { defineConfig } from 'vite';
 
-// Config mínima de Fase 0: Vite sirve index.html y empaqueta src/main.ts.
+// Vite sirve index.html y empaqueta src/main.ts; el preview usa un host generado por la plataforma.
 export default defineConfig({
+  server: {
+    host: '0.0.0.0',
+    allowedHosts: true,
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

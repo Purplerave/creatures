@@ -1,16 +1,35 @@
-# Creatures 🧬 — mascota digital con cerebro
+# Creatures 🧬 — una mascota digital con cerebro
 
-Proyecto en marcha. Aquí vive la **documentación de arquitectura y el estudio** de la nueva mascota digital (a la que Tecnotron llama *Creatures/bichito*).
+Creatures es un proyecto de ocio inspirado en *Creatures* (1996): una criatura virtual con necesidades, aprendizaje y una apariencia que reacciona a su estado.
 
-## Por dónde empezar
+## Empezar
 
-- **[LEEME.md](LEEME.md)** — paquete para IAs: qué hay y cómo está organizado.
-- **[bichito.html](bichito.html)** — la criatura funcional ya funcionando (prototipo HTML único, ábrelo en el navegador).
-- **[estudio-proyecto-creatures.html](estudio-proyecto-creatures.html)** — página de estudio del proyecto.
-- **[report.md](report.md)** — investigación técnica profunda.
-- **[estudio-creatures-revision.md](estudio-creatures-revision.md)** — documento de trabajo de revisión.
-- **notes/** — notas por bloques (arquitectura original, openc2e, nornbrain, enfoques modernos).
+Requisitos: Node.js 20 o superior.
 
-## Estado
+```bash
+npm ci
+npm run dev
+```
 
-Fase de estudio/revisión. Pendiente de reparto de trabajo entre asistentes (Tecnotron, DinoPablo, OpenCode).
+Vite sirve `index.html`, donde Nilo se dibuja en Canvas 2D. Para verificar los cambios:
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+## Estado actual
+
+El scaffold TypeScript/Vite incluye un motor de bioquímica determinista con ocho drives y seis químicos. El puerto visual L1 implementa `IVisuals`: reutiliza como `Path2D` los trazos SVG de `bichito.html`, deriva cuatro estados de ánimo de los drives y anima parpadeo, respiración y saltos sin azar. El hábitat se compone con CSS.
+
+## Estructura
+
+- `src/biochem/` — motor determinista, tabla de drives, químicos y reacciones.
+- `src/contracts/` — interfaces compartidas entre simulación y módulos.
+- `src/visuals/canvasVisuals.ts` — implementación Canvas de `IVisuals`.
+- `src/main.ts` — bucle principal; pasa snapshots al render sin cederle la simulación.
+- `tests/` — pruebas Vitest del motor y de la clasificación visual.
+- `docs/FASE0.md` — arquitectura, contratos y guía de desarrollo.
+- `bichito.html` — prototipo original y fuente de los paths SVG.
+- `estudio-proyecto-creatures.html`, `report.md`, `notes/` — documentación e investigación del proyecto.

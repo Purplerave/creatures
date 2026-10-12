@@ -1,12 +1,8 @@
 /**
  * Contrato del puerto de render (visuales).
  *
- * Fase 0: PLACEHOLDER — sin implementar. Tecnotron portará aquí los visuales
- * de Bichito; mientras tanto src/main.ts dibuja un render de prueba directo
- * sobre el canvas (no implementa esta interfaz a propósito).
- *
  * Quien lo implemente recibe snapshots de IBiochem.tick() y no toca la lógica
- * de simulación: el render es un puerto, no una fuente de verdad.
+ * de simulación: el render es un puerto de solo lectura, no una fuente de verdad.
  */
 import type { ChemicalId, DriveId, DriveState } from './types';
 

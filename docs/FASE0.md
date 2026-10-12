@@ -25,14 +25,16 @@ creatures/
 ├── vite.config.ts        # build → dist/
 ├── docs/FASE0.md         # este documento
 ├── src/
-│   ├── main.ts           # arranque + render de prueba en <canvas>
+│   ├── main.ts           # arranque + snapshots para el puerto visual y la UI de drives
 │   ├── contracts/        # CONTRATOS (interfaces tipo acuerdo entre módulos)
 │   │   ├── types.ts      # DriveId, DriveState, ChemicalId, TickResult
 │   │   ├── ibrain.ts     # IBrain { think(inputs) → BrainOutput }
 │   │   ├── ibiochem.ts   # IBiochem { tick, getDrive, getChemical }
-│   │   └── ivisuals.ts   # IVisuals (placeholder: sin implementar)
+│   │   └── ivisuals.ts   # IVisuals (puerto Canvas de solo lectura)
 │   ├── brain/
 │   │   └── stub.ts       # stub desechable de IBrain (neutro)
+│   ├── visuals/
+│   │   └── canvasVisuals.ts # paths de Bichito, estados de ánimo y animación procedural
 │   └── biochem/          # MOTOR de bioquímica (Fase 0)
 │       ├── driveTable.ts # tabla extensible de drives (los 8 + registerDrive)
 │       ├── chemicals.ts  # registro de químicos (6 + registerChemical)
@@ -48,7 +50,7 @@ creatures/
 |---|---|---|
 | `IBiochem` (`src/contracts/ibiochem.ts`) | **Yo (Fase 0)** → `biochem/engine.ts` | cerebro (inputs por tick) y visuales (snapshot para dibujar) |
 | `IBrain` (`src/contracts/ibrain.ts`) | **Tecnotron** (MLP + ε-exploración); hoy hay un stub desechable en `src/brain/stub.ts` | bucle principal: recibe `BrainInputs` (drives + químicos), devuelve `BrainOutput.actions` |
-| `IVisuals` (`src/contracts/ivisuals.ts`) | **Tecnotron** (port de visuales de Bichito) — *placeholder, sin implementar aún* | `main.ts` le pasa snapshots; el render nunca toca la simulación |
+| `IVisuals` (`src/contracts/ivisuals.ts`) | `visuals/canvasVisuals.ts` (`CanvasVisuals`) — port de Bichito a Canvas 2D | `main.ts` le pasa snapshots; el render nunca toca la simulación |
 | Genoma/mutación y palabras | **OpenCode** (futuro) | consumirá los mismos tipos de `contracts/types.ts` |
 
 Regla común: los contratos son interfaces pequeñas; cada módulo es sustituible
@@ -132,8 +134,16 @@ Snapshot = copia: mutarlo no afecta al motor.
 - `coupling.test.ts` — subir/quitar químico mueve el drive (hambre/miedo/curiosidad).
 - `reactions.test.ts` — A→B, cadena completa y ley exponencial.
 
+## Puerto visual de Canvas
+
+`src/visuals/canvasVisuals.ts` implementa `IVisuals` sin escribir en el motor.
+Los `d` de los paths del SVG de `bichito.html` se conservan como `Path2D`; el
+hábitat y sus luces son CSS. La expresión se deriva de hambre, energía, sueño,
+curiosidad, vínculo, aburrimiento, miedo y confort (`happy` / `sad` / `sleepy` /
+`excited`). Respiración, parpadeo, brillo de antenas y salto se calculan de forma
+periódica con el tiempo simulado, sin `Math.random()`.
+
 ## Estado / siguientes pasos
 
-- Fase 0 completo: andamiaje + motor de bioquímica + contratos.
-- Pendiente (otros módulos): cerebro real (Tecnotron), visuales Bichito
-  (Tecnotron, `IVisuals`), genoma/mutación y palabras (OpenCode).
+- Fase 0 completo: andamiaje, motor de bioquímica, contratos y port visual de Bichito a Canvas (`CanvasVisuals`).
+- Pendiente (otros módulos): cerebro real (Tecnotron), genoma/mutación y palabras (OpenCode).

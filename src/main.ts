@@ -1,84 +1,136 @@
-/**
- * Fase 0 — render de prueba sobre <canvas>.
- * Dibuja el estado de los drives y químicos en texto. NO es el render final:
- * los visuales de Bichito los porta Tecnotron (contrato en contracts/ivisuals.ts).
- */
+/** Arranque: un snapshot del motor alimenta el puerto visual y la UI de drives. */
+import type { RenderState } from './contracts/ivisuals';
+import type { DriveId, TickResult } from './contracts/types';
 import { BiochemEngine } from './biochem';
+import { CanvasVisuals, deriveMood, MOOD_LABELS } from './visuals/canvasVisuals';
 
-const canvas = document.getElementById('app') as HTMLCanvasElement;
-const context2d = canvas.getContext('2d');
-if (!context2d) throw new Error('No se pudo obtener el contexto 2d del canvas');
-const ctx: CanvasRenderingContext2D = context2d;
+const canvas = document.getElementById('app');
+const moodBadge = document.getElementById('mood');
+const driveGrid = document.getElementById('drive-grid');
+
+if (!(canvas instanceof HTMLCanvasElement)) throw new Error('Falta el canvas #app');
+if (!moodBadge) throw new Error('Falta el indicador de estado #mood');
+if (!driveGrid) throw new Error('Falta el panel de drives #drive-grid');
+const moodBadgeElement = moodBadge;
 
 const engine = new BiochemEngine({
-  initialChemicals: { glucosa: 0.8, dopamina: 0.4, serotonina: 0.3 },
-  initialDrives: { energia: 0.7 },
+  initialChemicals: {
+    glucosa: 0.8,
+    adenosina: 0.12,
+    dopamina: 0.4,
+    cortisol: 0.06,
+    oxitocina: 0.24,
+    serotonina: 0.3,
+  },
+  initialDrives: {
+    hambre: 0.22,
+    energia: 0.76,
+    sueno: 0.18,
+    curiosidad: 0.62,
+    vinculo: 0.54,
+    aburrimiento: 0.2,
+    miedo: 0.08,
+    confort: 0.68,
+  },
 });
 
-const driveIds = engine.listDrives();
-const chemicalIds = engine.listChemicals();
+const DRIVE_LABELS: Record<string, string> = {
+  hambre: 'Hambre',
+  energia: 'Energía',
+  sueno: 'Sueño',
+  curiosidad: 'Curiosidad',
+  vinculo: 'Vínculo',
+  aburrimiento: 'Aburrimiento',
+  miedo: 'Miedo',
+  confort: 'Confort',
+};
+
+interface DriveReadout {
+  meter: HTMLDivElement;
+  value: HTMLOutputElement;
+  fill: HTMLSpanElement;
+}
+
+const driveReadouts = new Map<DriveId, DriveReadout>();
+for (const id of engine.listDrives()) {
+  const card = document.createElement('article');
+  card.className = 'drive-card';
+
+  const line = document.createElement('div');
+  line.className = 'drive-line';
+  const label = document.createElement('span');
+  label.textContent = DRIVE_LABELS[id] ?? id;
+  const value = document.createElement('output');
+  value.textContent = '0%';
+  line.append(label, value);
+
+  const meter = document.createElement('div');
+  meter.className = 'drive-meter';
+  meter.setAttribute('role', 'meter');
+  meter.setAttribute('aria-label', DRIVE_LABELS[id] ?? id);
+  meter.setAttribute('aria-valuemin', '0');
+  meter.setAttribute('aria-valuemax', '100');
+  meter.setAttribute('aria-valuenow', '0');
+  const fill = document.createElement('span');
+  meter.append(fill);
+
+  card.append(line, meter);
+  driveGrid.append(card);
+  driveReadouts.set(id, { meter, value, fill });
+}
+
+const visuals = new CanvasVisuals();
+visuals.mount(canvas);
 
 let frame = 0;
 let simTime = 0;
-let last = performance.now();
+let lastFrameTime = performance.now();
+let animationFrame = 0;
 
-function draw(): void {
-  const { width, height } = canvas;
-  ctx.fillStyle = '#101418';
-  ctx.fillRect(0, 0, width, height);
+function renderSnapshot(snapshot: TickResult): void {
+  const state: RenderState = {
+    frame,
+    drives: snapshot.drives,
+    chemicals: snapshot.chemicals,
+    simTime,
+  };
+  const mood = deriveMood(state.drives);
+  visuals.render(state);
+  moodBadgeElement.dataset.mood = mood;
+  moodBadgeElement.textContent = MOOD_LABELS[mood];
 
-  ctx.fillStyle = '#e6edf3';
-  ctx.font = 'bold 18px monospace';
-  ctx.fillText('Creatures — Fase 0 (render de prueba)', 24, 36);
-  ctx.font = '13px monospace';
-  ctx.fillStyle = '#8b949e';
-  ctx.fillText(`tick ${frame}  ·  t = ${simTime.toFixed(2)} s`, 24, 58);
-
-  ctx.font = '14px monospace';
-  let y = 92;
-  ctx.fillStyle = '#7ee787';
-  ctx.fillText('DRIVES', 24, y);
-  y += 20;
-  for (const id of driveIds) {
-    const state = engine.getDrive(id);
-    const w = Math.round(state.level * 240);
-    const tw = Math.round(state.target * 240);
-    ctx.fillStyle = '#e6edf3';
-    ctx.fillText(`${id.padEnd(14)} ${state.level.toFixed(3)}`, 32, y);
-    ctx.fillStyle = '#30363d';
-    ctx.fillRect(280, y - 11, 240, 12);
-    ctx.fillStyle = '#58a6ff';
-    ctx.fillRect(280, y - 11, w, 12);
-    ctx.fillStyle = '#f0b429'; // target (proyección 1 s)
-    ctx.fillRect(280 + tw, y - 11, 2, 12);
-    y += 20;
-  }
-
-  y += 14;
-  ctx.fillStyle = '#d2a8ff';
-  ctx.fillText('QUÍMICOS', 24, y);
-  y += 20;
-  for (const id of chemicalIds) {
-    const level = engine.getChemical(id);
-    ctx.fillStyle = '#e6edf3';
-    ctx.fillText(`${id.padEnd(14)} ${level.toFixed(3)}`, 32, y);
-    ctx.fillStyle = '#30363d';
-    ctx.fillRect(280, y - 11, 240, 12);
-    ctx.fillStyle = '#bc8cff';
-    ctx.fillRect(280, y - 11, Math.round(level * 240), 12);
-    y += 20;
+  for (const [id, readout] of driveReadouts) {
+    const drive = state.drives[id];
+    if (!drive) continue;
+    const percentage = Math.round(Math.min(1, Math.max(0, drive.level)) * 100);
+    readout.value.textContent = `${percentage}%`;
+    readout.fill.style.width = `${percentage}%`;
+    readout.meter.setAttribute('aria-valuenow', String(percentage));
   }
 }
+
+renderSnapshot(engine.tick(0));
 
 function loop(now: number): void {
-  const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
-  last = now;
-  engine.tick(dt);
+  const dt = Math.min(0.1, Math.max(0, (now - lastFrameTime) / 1000));
+  lastFrameTime = now;
   simTime += dt;
   frame += 1;
-  draw();
-  requestAnimationFrame(loop);
+  renderSnapshot(engine.tick(dt));
+  animationFrame = requestAnimationFrame(loop);
 }
 
-draw();
-requestAnimationFrame(loop);
+function cleanup(): void {
+  cancelAnimationFrame(animationFrame);
+  visuals.unmount();
+}
+
+animationFrame = requestAnimationFrame(loop);
+window.addEventListener('pagehide', cleanup, { once: true });
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    cleanup();
+    window.removeEventListener('pagehide', cleanup);
+  });
+}
