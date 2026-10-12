@@ -1,9 +1,9 @@
 # ADAPTER — D1: Adaptador del cerebro v0.5 (`BrainV05Adapter`)
 
-Estado: **D1 implementado** en la rama `dinopablo/brain-adapter`. La
-implementación real buscada en `tecnotron/brain-v05` **aún no estaba en el
-remoto** al implementar, así que se usa un **placeholder temporal**
-(`src/brain/placeholder-brain.ts`) tras la misma interfaz estructural.
+Estado: **D1 implementado** en la rama `dinopablo/brain-adapter`. Al integrar
+el runtime, no había un modelo cerebral real disponible en el repositorio; la
+app usa un **placeholder temporal** (`src/brain/placeholder-brain.ts`) que
+cumple la misma interfaz estructural.
 
 ## Regla del cerebro encapsulado y desechable
 
@@ -58,9 +58,10 @@ BiochemEngine ──▶ BrainInputs (contracts/ibrain.ts)
 `src/brain/runtime.ts` expone `createBrainRuntime(genome, brainFactory, options)`:
 resuelve una vez `Genome.getPhenotype()`, entrega sus knobs a la fábrica del
 cerebro y configura `BrainV05Adapter` con un `genomeProvider`. `main.ts` pasa ese
-mismo fenotipo a `BiochemEngine`. Los genes de entrada se consultan al hacer
-cada `think()`; si cambia el genoma, el vector cambia, pero para recalcular el
-fenotipo/los knobs del motor se reconstruye el runtime.
+mismo fenotipo a `BiochemEngine`. Los genes de entrada se consultan en cada
+`think()`; si cambia el genoma, el vector cambia, pero los knobs y los deltas
+bioquímicos son snapshots. Para aplicar una mutación también hay que recalcular
+el fenotipo y reconstruir `BiochemEngine` y el runtime cerebral.
 
 El vocabulario se avanza con el mismo `dt` y se puede enseñar desde la UI. **No
 se envía aún a `BrainInputs`**: el mapeo a los tres estímulos requiere decisión

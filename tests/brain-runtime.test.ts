@@ -53,7 +53,7 @@ describe('createBrainRuntime', () => {
     expect(fakeBrain.thinkCalls[1]?.genome).toEqual([0.9, 0.8, 0.7, 0.6]);
   });
 
-  it('permite que el CEO/revisor sustituya el mapeo provisional', () => {
+  it('permite configurar mapeos alternativos de genes y estímulos', () => {
     const genome = new Genome({ genes: { metabolismo: 0.8, alerta: 0.3 } });
     const fakeBrain = new FakeBrain();
     const runtime = createBrainRuntime(genome, () => fakeBrain, {

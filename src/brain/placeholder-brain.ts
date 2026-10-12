@@ -1,6 +1,6 @@
 /**
- * ⚠️ Cerebro PLACEHOLDER TEMPORAL — se reemplaza en un solo fichero cuando
- * suba la rama `tecnotron/brain-v05` de la CEO con la clase real.
+ * ⚠️ Cerebro PLACEHOLDER TEMPORAL — se sustituye en la fábrica del runtime
+ * cuando haya una implementación real que cumpla `BrainV05Like`.
  *
  * NO es un cerebro: no hay MLP, ni pesos, ni exploración ε. Implementa
  * `BrainV05Like` con una salida neutra constante para que el adaptador,

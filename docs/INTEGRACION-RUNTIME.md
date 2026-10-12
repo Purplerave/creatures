@@ -6,7 +6,7 @@ Esta nota documenta la composición actual del runtime en la rama de trabajo. La
 
 - `Genome.getPhenotype()` se calcula una vez al construir el runtime.
 - El mismo fenotipo se entrega a `BiochemEngine` para aplicar deltas de `decayPerSecond` y a la fábrica del cerebro para sus knobs (`hiddenSize`, `epsilonInitial`, `learningRate`).
-- `createBrainRuntime()` adapta el cerebro al contrato `IBrain` y obtiene el vector genómico en cada `think()`, por lo que un cambio del genoma se refleja en el vector siguiente.
+- `createBrainRuntime()` adapta el cerebro al contrato `IBrain` y obtiene el vector genómico en cada `think()`, por lo que un cambio del genoma se refleja en el vector siguiente. El fenotipo aplicado al motor y los knobs de la fábrica son snapshots; para aplicar una mutación hay que reconstruir `BiochemEngine` y el runtime cerebral. La app aún no muta el genoma en ejecución.
 - Mapeo provisional, inspirado en los cuatro rasgos del prototipo Bichito:
   `[alerta, sociabilidad, resiliencia, metabolismo]` → curiosidad, vínculo social, resiliencia y apetito.
 - El mapeo se puede reemplazar mediante `genomeInputGenes`; debe confirmarlo Tecnotron antes de considerarlo definitivo.

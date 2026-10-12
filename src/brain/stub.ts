@@ -1,9 +1,9 @@
 /**
  * Stub desechable del contrato IBrain.
  *
- * ⚠️ Este archivo es temporal: lo sustituirá el cerebro real de Tecnotron
- * (MLP + exploración épsilon). No guardar estado aquí ni acoplarlo a nada;
- * solo existe para que la Fase 0 compile contra IBrain y para pruebas.
+ * ⚠️ Este archivo histórico es temporal: sirve para que la Fase 0 compile
+ * contra IBrain y para pruebas. La app actual usa `PlaceholderBrain` tras el
+ * adaptador; no guardar estado ni acoplar el stub a otros módulos.
  */
 import type { BrainInputs, BrainOutput, IBrain } from '../contracts/ibrain';
 

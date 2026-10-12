@@ -1,15 +1,14 @@
 /**
- * Tipos estructurales mínimos del cerebro `brain-v05` (Tecnotron).
+ * Tipos estructurales mínimos del modelo cerebral v0.5.
  *
  * REGLA DEL CEREBRO ENVOLVENTE Y DESECHABLE: este módulo NO conoce el MLP,
  * sus capas ni sus pesos. Declara solo la superficie de llamada que el
- * adaptador (src/brain/adapter.ts) necesita, de forma ESTRUCTURAL: cualquier
- * clase que tenga estos métodos con estos shapes encaja sin `implements`
- * (TS structural typing), incluida la clase real de la rama
- * `tecnotron/brain-v05` cuando suba.
+ * adaptador (`src/brain/adapter.ts`) necesita, de forma ESTRUCTURAL: cualquier
+ * clase con estos métodos y shapes encaja sin `implements` (TS structural
+ * typing).
  *
- * Si la rama de la CEO aún no existe, se usa `src/brain/placeholder-brain.ts`
- * (trivial, temporal) que satisface esta misma interfaz.
+ * Mientras no haya una implementación real conectada, se usa
+ * `src/brain/placeholder-brain.ts`, que satisface esta misma interfaz.
  */
 
 /** Entrada que espera `brain-v05`: tres vectores ya normalizados. */

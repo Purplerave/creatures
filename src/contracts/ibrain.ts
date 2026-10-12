@@ -1,7 +1,8 @@
 /**
  * Contrato del cerebro.
- * Lo implementa Tecnotron (MLP + exploración ε). Esta interfaz es el único
- * acoplamiento: la bioquímica no sabe qué algoritmo usa el cerebro.
+ * `BrainV05Adapter` lo implementa y encapsula una implementación enchufable;
+ * la composición actual usa `PlaceholderBrain` hasta disponer del modelo real.
+ * La bioquímica no conoce el algoritmo concreto.
  */
 import type { ChemicalId, DriveId, DriveState } from './types';
 
@@ -26,10 +27,7 @@ export interface BrainOutput {
   debug?: Record<string, number>;
 }
 
-/**
- * Contrato mínimo del cerebro.
- * Implementación desechable esperada en src/brain/ (stub en src/brain/stub.ts).
- */
+/** Contrato mínimo que implementa `BrainV05Adapter` en `src/brain/adapter.ts`. */
 export interface IBrain {
   think(inputs: BrainInputs): BrainOutput;
 }
