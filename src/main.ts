@@ -3,6 +3,10 @@ import type { RenderState } from './contracts/ivisuals';
 import type { DriveId, TickResult } from './contracts/types';
 import { BiochemEngine } from './biochem';
 import { CanvasVisuals, deriveMood, MOOD_LABELS } from './visuals/canvasVisuals';
+import { BrainV05Adapter } from './brain/adapter';
+import { PlaceholderBrain } from './brain/placeholder-brain';
+import type { BrainInputs, BrainOutput } from './contracts/ibrain';
+import type { ChemicalId, DriveState } from './contracts/types';
 
 const canvas = document.getElementById('app');
 const moodBadge = document.getElementById('mood');
@@ -82,6 +86,23 @@ for (const id of engine.listDrives()) {
 const visuals = new CanvasVisuals();
 visuals.mount(canvas);
 
+// D1 — adaptador del cerebro v0.5 (interfaz IBrain). Placeholder temporal:
+// se reemplaza por la clase real de `tecnotron/brain-v05` cuando suba su rama
+// (solo cambia esta línea: el adaptador no conoce el MLP, ver docs/ADAPTER.md).
+const brain = new BrainV05Adapter(new PlaceholderBrain());
+let lastBrainOutput: BrainOutput = { actions: [0] };
+
+const driveIds = engine.listDrives();
+const chemicalIds = engine.listChemicals();
+
+function brainInputs(tick: number): BrainInputs {
+  const drives = {} as Record<DriveId, DriveState>;
+  for (const id of driveIds) drives[id] = engine.getDrive(id);
+  const chemicals = {} as Record<ChemicalId, number>;
+  for (const id of chemicalIds) chemicals[id] = engine.getChemical(id);
+  return { drives, chemicals, tick };
+}
+
 let frame = 0;
 let simTime = 0;
 let lastFrameTime = performance.now();
@@ -98,6 +119,9 @@ function renderSnapshot(snapshot: TickResult): void {
   visuals.render(state);
   moodBadgeElement.dataset.mood = mood;
   moodBadgeElement.textContent = MOOD_LABELS[mood];
+  const action = lastBrainOutput.actions[0] ?? 0;
+  const confidence = lastBrainOutput.debug?.confidence ?? 0;
+  moodBadgeElement.title = `cerebro v0.5 · acción ${action.toFixed(3)} · confianza ${confidence.toFixed(3)}`;
 
   for (const [id, readout] of driveReadouts) {
     const drive = state.drives[id];
@@ -116,6 +140,7 @@ function loop(now: number): void {
   lastFrameTime = now;
   simTime += dt;
   frame += 1;
+  lastBrainOutput = brain.think(brainInputs(frame));
   renderSnapshot(engine.tick(dt));
   animationFrame = requestAnimationFrame(loop);
 }
