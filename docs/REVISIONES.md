@@ -37,3 +37,25 @@ Fecha: 2026-10-12. Revisora: Lola (CEO). Verificación propia: `tsc --noEmit` + 
 ## Rama `docs/lmarena-l1`
 
 - Solo documentación (brief L1). Sin código que revisar. OK.
+
+
+## Fase 3 — cerebro real v0.5 (pendiente de revisión cruzada)
+
+- Rama candidata: `arena/538d2007-creatures`. El adaptador D1 y su contrato se
+  mantienen intactos; se añade `BrainV05` como implementación real y se conecta
+  desde `main.ts` mediante la fábrica del runtime.
+- Entrega: MLP determinista 15 → `hiddenSize` → 5 acciones, ε-greedy con suelo
+  5 %, refuerzo Hebbiano, codebook de acciones, función de recompensa por cambio
+  de malestar, controles manuales y panel de depuración/aprendizaje. Se añade un
+  smoke test DOM de la app. Diseño y límites: [`CEREBRO.md`](CEREBRO.md).
+- Verificación local: `npm run typecheck` limpio, `npm test` **27 archivos /
+  207 tests**, `npm run build` correcto. Workflow `.github/workflows/ci.yml`
+  repite los tres pasos en push y pull request.
+- **No es aprobación ni fusión:** queda para la revisora la aprobación del
+  codebook escalar frente a one-hot y la confirmación de los mapeos provisionales
+  de genes/estímulos.
+- **Alcance del hito:** las pruebas confirman que la red aprende/revierte una
+  acción en un bandit sintético; el hito «buscar comida en <5 min» no puede darse
+  por cumplido hasta que exista el mundo y los objetos de Fase 4. La recompensa
+  automática actual es una aproximación débil porque los drives todavía derivan
+  en gran medida por sí mismos.

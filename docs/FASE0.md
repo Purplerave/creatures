@@ -6,11 +6,11 @@ contratos entre módulos y el motor de bioquímica determinista.
 ## Cómo levantarlo
 
 ```bash
-npm i          # instala typescript, vite y vitest (devDependencies)
-npm run dev    # servidor de desarrollo con HMR (abre index.html)
-npm test       # vitest run — suite completa
-npm run typecheck  # tsc --noEmit — 0 errores
-npm run build  # empaqueta en dist/
+npm ci              # instala exactamente lo fijado por package-lock.json
+npm run dev         # servidor de desarrollo con HMR (abre index.html)
+npm test            # suite Vitest completa
+npm run typecheck   # tsc --noEmit — 0 errores
+npm run build       # empaqueta en dist/
 ```
 
 Requisitos: Node ≥ 20 (probado con v24). `package.json` usa `"type": "module"`.
@@ -37,7 +37,10 @@ creatures/
 │   │   ├── brainv05-types.ts # contrato estructural del modelo v0.5
 │   │   ├── adapter.ts       # BrainV05Adapter: BrainInputs → BrainV05Like
 │   │   ├── runtime.ts       # conecta Genome, fenotipo y adaptador
-│   │   └── placeholder-brain.ts # cerebro temporal, sin aprendizaje
+│   │   ├── brain-v05.ts     # CEREBRO REAL: MLP + ε-greedy + Hebbiano (docs/CEREBRO.md)
+│   │   ├── actions.ts       # espacio de acciones (codebook escalar en [-1, 1])
+│   │   ├── reward.ts        # malestar y recompensa por reducción de drive
+│   │   └── placeholder-brain.ts # cerebro neutro, solo para tests
 │   ├── genome/          # genes extensibles, PRNG, mutación y fenotipo
 │   ├── vocab/            # Vocabulary implements IVocab
 │   ├── visuals/
@@ -56,7 +59,7 @@ creatures/
 | Contrato | Quién lo implementa | Quién lo consume |
 |---|---|---|
 | `IBiochem` (`src/contracts/ibiochem.ts`) | **Yo (Fase 0)** → `biochem/engine.ts` | cerebro (inputs por tick) y visuales (snapshot para dibujar) |
-| `IBrain` (`src/contracts/ibrain.ts`) | `BrainV05Adapter` sobre `BrainV05Like`; la app usa `PlaceholderBrain` mientras falta el modelo real | `main.ts` le pasa snapshots de drives/químicos y el runtime mapea genes |
+| `IBrain` (`src/contracts/ibrain.ts`) | `BrainV05Adapter` sobre `BrainV05Like`; la app usa el cerebro real `BrainV05` (MLP + ε-greedy + Hebbiano) | `main.ts` le pasa snapshots de drives/químicos, mapea genes y lo refuerza (premio/castigo y reducción de malestar) |
 | `IVisuals` (`src/contracts/ivisuals.ts`) | `visuals/canvasVisuals.ts` (`CanvasVisuals`) — port de Bichito a Canvas 2D | `main.ts` le pasa snapshots; el render nunca toca la simulación |
 | Genoma y palabras | `Genome` (`src/genome/`) y `Vocabulary` (`src/vocab/`) | el runtime aplica fenotipo al motor; la UI enseña vocabulario; su codificación cerebral sigue pendiente |
 
@@ -165,4 +168,13 @@ cómo representar palabras en los tres canales de estímulo.
 
 - Fase 0 y port visual L1: implementados.
 - Genoma y vocabulario: implementados; composición del runtime y UI de enseñanza disponibles.
-- Pendiente: integrar un cerebro real en lugar de `PlaceholderBrain` y validar con Tecnotron los mapeos de genes, estímulos y vocabulario.
+- Cerebro real (Fase 3): implementado en `src/brain/brain-v05.ts` con su bucle de
+  refuerzo en `main.ts` y panel propio en la UI. Modelo, fórmulas y pruebas en
+  [`CEREBRO.md`](CEREBRO.md).
+- Pendiente de validación con Tecnotron/CEO: el mapeo de los cuatro genes de
+  entrada y de los tres estímulos químicos, cómo (o si) entra el vocabulario en
+  `BrainInputs`, y el codebook escalar de la acción frente a la alternativa
+  one-hot (que exigiría cambiar el adaptador aprobado).
+- Siguiente frente natural: mundo y objetos (Fase 4) para que la recompensa por
+  reducción de drive sea contingente con la acción, y persistencia (Fase 5) con
+  el `serialize()` que ya tienen cerebro, genoma y vocabulario.

@@ -115,6 +115,8 @@ Diseño sugerido para (a): cerebro moderno pequeño (MLP + Hebbiano por refuerzo
 
 **Fase 3 — Cerebro v1 (semanas 9-13).** Red pequeña (MLP o CfC ~200n): atención+decisión por WTA, Hebbiano STW/LTW con refuerzo por reducción de drive, "sueño" de instintos. *Hito: la criatura aprende a buscar comida en <5 min; A/B con aprendizaje off muestra diferencia.*
 
+**Estado de implementación (12-oct-2026):** la rama `arena/538d2007-creatures` incorpora el cerebro v0.5 como MLP pequeño con capa oculta `tanh`, ε-greedy y refuerzo Hebbiano determinista, más un panel de acciones y enseñanza manual. Tests sintéticos verifican aprendizaje/reversión y el interruptor permite inspeccionar el refuerzo automático; **esto no satisface todavía el hito de buscar comida ni el A/B en una tarea de mundo**. Sin objetos de Fase 4, la recompensa automática basada solo en drives intrínsecos no depende de forma suficiente de la acción. Ver [`docs/CEREBRO.md`](docs/CEREBRO.md).
+
 **Fase 4 — Mundo y objetos (semanas 14-18).** Objetos con eventos (comer/jugar/acariciar), física simple, habitaciones. *Hito: 3 objetos funcionales usados autónomamente según drives.*
 
 **Fase 5 — Persistencia y ciclo de vida (semanas 19-22).** IndexedDB, export/import de genomas JSON, envejecimiento por etapas, reproducción con cruce real, muerte. *Hito: recargar el navegador restaura el mundo; cría con rasgos mezclados.*
