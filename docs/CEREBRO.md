@@ -1,14 +1,16 @@
 # CEREBRO — v0.5 real: MLP + ε-greedy + Hebbiano por refuerzo
 
-Estado: **implementado en esta rama**, pendiente de revisión cruzada (ver
-[`REVISIONES.md`](REVISIONES.md)). Sustituye al `PlaceholderBrain` en la fábrica
-de `createBrainRuntime()`; el placeholder se conserva intacto para tests y como
-referencia de la superficie estructural.
+Estado: **implementado e integrado en `main`** (PR #3); el puerto de debug D2
+se integró después con el PR #4. Esta rama además enlaza los verbos al primer
+mundo por eventos (ver [`ESTADO-PROYECTO.md`](ESTADO-PROYECTO.md)). `BrainV05`
+sustituye al `PlaceholderBrain` en la app; el placeholder se conserva para
+tests/regresión.
 
 > Implementa el núcleo técnico de Fase 3 (red pequeña, selección de acción y
 > refuerzo por recompensa). **No se da por cumplido el hito completo** de
-> «aprender a buscar comida en <5 min»: aún no hay mundo/objetos (Fase 4), así
-> que el A/B en una tarea de búsqueda real queda pendiente.
+> «aprender a buscar comida en <5 min»: aunque esta rama ya tiene un mundo
+> mínimo por eventos, aún no hay navegación ni búsqueda espacial, así que el
+> A/B en una tarea de juego real queda pendiente.
 
 ## Qué hay dónde
 
@@ -64,8 +66,10 @@ entrada (15) ──tanh──▶ oculta (hiddenSize) ──lineal──▶ puntu
 | `maxWeight` | — | > 0 | 4 |
 
 Con el genoma por defecto (todos los genes a 0.5) la app construye una red de
-**34 ocultas, ε inicial 0.325 y η 0.155**. ε decae por decisión hasta el suelo:
-con `epsilonDecay` 0.9995 a 60 fps tarda ~1 minuto en dejar de explorar tanto.
+**34 ocultas, ε inicial 0.325 y η 0.155**. ε decae por decisión hasta el suelo.
+El modelo tardaría ~62 s si se llamara a `think()` a 60 Hz; la app actual decide
+cada 0,75 s, así que desde 0,325 hasta el suelo de 0,05 tarda unos **47 minutos
+simulados**. Es un parámetro por decisión, no por segundo.
 
 ## Espacio de acciones (codebook)
 
@@ -88,10 +92,10 @@ elegida y quien consume la salida lo decodifica con `actionFromValue()` /
 `DRIVE_ORDER`).
 
 ⚠️ **Decisión provisional.** La alternativa (one-hot de longitud N en
-`BrainOutput.actions`) exige modificar el adaptador y su test de interfaz; se
-propone a Tecnotron/CEO en [`REVISIONES.md`](REVISIONES.md) y se cambiaría en
-una rama propia, no aquí. Cuando exista mundo (Fase 4), cada `id` se asociará a
-su evento/script y el código escalar seguirá siendo solo el transporte.
+`BrainOutput.actions`) exige modificar el adaptador y su test de interfaz; sigue
+como decisión de diseño en [`REVISIONES.md`](REVISIONES.md), no como una revisión
+bloqueante. El mundo inicial de `src/world/` ya asocia cada `id` a un objeto y a
+un evento; el codebook escalar sigue siendo solo el código de transporte.
 
 El espacio es configurable (`new BrainV05({ actions: [...] })`) y se valida:
 ids únicos y sin espacios, valores finitos en [-1, 1] y **únicos** (si no, el
@@ -128,7 +132,7 @@ Notas de comportamiento (todas con test):
 
 ## Recompensa por reducción de drive (`reward.ts`)
 
-Sustituto de los neuroemisores de recompensa/castigo mientras no haya mundo:
+Señal de recompensa simplificada, antes de modelar neuroemisores dedicados:
 
 ```
 malestar = Σ (w>0 ? w·nivel : |w|·(1−nivel)) / Σ|w|          ∈ [0, 1]
@@ -140,13 +144,32 @@ deseables `energia`, `confort`, `vinculo` (−1). Drive ausente ⇒ nivel 0. La
 tabla es extensible (añadir una entrada no toca ninguna fórmula) y `gain` es
 configurable.
 
-**Honestidad sobre el estado actual:** sin objetos en el mundo, la deriva de los
-drives es casi toda intrínseca, así que esta señal es débil y poco contingente
-con la acción (por eso el `rewardTotal` de una partida larga sale negativo: la
-hambre sube sola). El refuerzo accionable de la demo son los botones
-**Premiar/Castigar**, y el interruptor «refuerzo automático» permite hacer el
-A/B con el aprendizaje apagado. En cuanto haya comida/juego/caricias (Fase 4),
-esta misma función da aprendizaje por reducción de drive sin cambios.
+**Honestidad sobre el estado actual:** el primer mundo por eventos hace que
+algunos cambios de drive sí dependan del verbo elegido; sin navegación, objeto
+objetivo por necesidad ni calibración, la señal todavía no demuestra una tarea
+de aprendizaje real y la deriva intrínseca puede dominarla. Los botones
+**Premiar/Castigar** permiten supervisar una decisión y el interruptor
+«refuerzo automático» permite comparar con/sin esa fuente de aprendizaje.
+
+## Verbos conectados al mundo (primer corte de Fase 4)
+
+En esta rama, `main.ts` solicita una decisión cada 0,75 segundos simulados, no
+cada fotograma, y mantiene ese verbo hasta la siguiente decisión. `src/world/`
+resuelve los IDs actuales así: `descansar`/`acurrucarse` → nido, `buscar` →
+comedero, `explorar` → pelota, `observar` → luz suave. Si el objeto terminó su
+enfriamiento, devuelve un `BiochemicalImpulse`; `BiochemEngine.applyImpulse()`
+valida y aplica el lote, limitado a los rangos de drives y químicos.
+
+En la siguiente decisión, el refuerzo automático mide la variación de malestar
+mientras el verbo estuvo activo. Los botones **Premiar/Castigar** siguen
+reforzando manualmente la última decisión. La forma **Probar acción** ejecuta
+un verbo de prueba sin enseñar al cerebro y descarta el siguiente refuerzo
+automático para no atribuirle una intervención externa.
+
+Este mundo es todavía **por eventos, no espacial**: no hay desplazamiento,
+coordenadas, colisiones ni búsqueda de un objeto por distancia. Los valores y
+cooldowns de cada efecto son iniciales y deben calibrarse con una tarea de juego
+antes de evaluar aprendizaje autónomo.
 
 ## Determinismo
 
@@ -187,17 +210,18 @@ El panel «Cerebro de Nilo» de `index.html` muestra: acción tomada (y si fue
 exploración ε), confianza, decisiones y refuerzos, medidor de ε, y una barra por
 acción del codebook con su probabilidad — el aprendizaje se ve en directo.
 
-## Pendiente (para la revisión)
+## Decisiones y siguientes pasos
 
-1. **Confirmar el codebook escalar** frente a la alternativa one-hot (arriba).
+1. **Ratificar el codebook escalar** frente a la alternativa one-hot (decisión de
+   producto/contrato, no PR pendiente).
 2. **Confirmar los 4 genes de entrada** `[alerta, sociabilidad, resiliencia,
-   metabolismo]` y los estímulos `[dopamina, cortisol, adenosina]` (siguen
-   siendo provisionales; nada cambia en este módulo: los providers del
-   adaptador ya permiten sustituirlos).
-3. **Vocabulario → `BrainInputs`**: sigue sin cablearse. `BrainV05Input` tiene
-   tres canales de estímulo y el contrato `IVocab` no define su codificación;
-   no se inventa aquí.
-4. **LTW/olvido de pesos** (STW↔LTW del original) y consolidación durante el
-   «sueño»: no están en v0.5; encajan como `weightDecay` por refuerzo.
-5. **Persistencia de la partida** (Fase 5): `serialize()` del cerebro + genoma +
-   vocabulario ya dan el material; falta el guardado/carga en la UI.
+   metabolismo]` y los estímulos `[dopamina, cortisol, adenosina]`: siguen siendo
+   provisionales; los providers del adaptador permiten sustituirlos.
+3. **Vocabulario → `BrainInputs`**: aún no se cablea. `BrainV05Input` tiene tres
+   canales de estímulo y `IVocab` no define cómo codificar palabras.
+4. **Completar mundo espacial**: posición, movimiento y navegación a objetos;
+   luego calibrar cooldowns y reward con una tarea y un A/B reproducible.
+5. **LTW/olvido de pesos** (STW↔LTW del original) y consolidación durante el
+   «sueño»: no están en v0.5; podrían entrar como `weightDecay` por refuerzo.
+6. **Persistencia de la partida** (Fase 5): además de cerebro/genoma/vocabulario,
+   falta serializar motor y mundo y coordinar guardado/carga desde la UI.

@@ -1,10 +1,8 @@
 /**
- * ⚠️ Cerebro PLACEHOLDER TEMPORAL — se sustituye en la fábrica del runtime
- * cuando haya una implementación real que cumpla `BrainV05Like`.
+ * Implementación neutra de prueba/regresión; la app usa `BrainV05` real.
  *
- * NO es un cerebro: no hay MLP, ni pesos, ni exploración ε. Implementa
- * `BrainV05Like` con una salida neutra constante para que el adaptador,
- * main.ts y los tests compilen y funcionen contra el mismo shape.
+ * NO es un cerebro: no hay MLP, pesos ni exploración ε. Su salida constante
+ * permite probar el adaptador/fábrica sin acoplarlos al modelo productivo.
  * No copiar ni inventar el MLP aquí (regla del cerebro encapsulado).
  */
 import type { BrainDebugState, BrainV05Input, BrainV05Like, BrainV05Result } from './brainv05-types';

@@ -41,3 +41,13 @@ export interface TickResult {
   /** Niveles de todos los químicos registrados al cierre del tick (0..1). */
   chemicals: Record<ChemicalId, number>;
 }
+
+/**
+ * Impulso instantáneo causado por una interacción del mundo (comida, descanso,
+ * juego, etc.). Cada valor es un delta; el motor valida ids/rangos, recorta a
+ * los clamps de cada entidad y aplica el lote de forma atómica.
+ */
+export interface BiochemicalImpulse {
+  drives?: Partial<Record<DriveId, number>>;
+  chemicals?: Partial<Record<ChemicalId, number>>;
+}

@@ -66,7 +66,7 @@ export const DEFAULT_LEARNING_RATE = 0.08;
 export const DEFAULT_EPSILON_INITIAL = 0.35;
 /** Suelo de exploración acordado en el brief del cerebro v0.5: 5 %. */
 export const DEFAULT_EPSILON_FLOOR = 0.05;
-/** Decaimiento de ε por decisión (0.9995 ⇒ ~62 s a 60 fps hasta el suelo). */
+/** Decaimiento de ε por decisión (0.9995 ⇒ ~62 s si `think()` corre a 60 Hz). */
 export const DEFAULT_EPSILON_DECAY = 0.9995;
 /** Recorte de pesos/bias: evita saturación y mantiene la red estable. */
 export const DEFAULT_MAX_WEIGHT = 4;

@@ -1,0 +1,42 @@
+name: Proponer una mejora
+description: Proponer una capacidad con caso de uso y criterios verificables
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |-
+        Revisa primero `docs/ESTADO-PROYECTO.md` y las decisiones abiertas en `docs/REVISIONES.md`.
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Problema o caso de uso
+      description: ¿Qué necesidad del juego resolvería esta mejora?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta
+      description: Describe el comportamiento esperado y qué módulos podría tocar.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación
+      description: ¿Cómo sabremos que está terminado? Incluye una forma de probarlo.
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Área relacionada
+      options:
+        - Bioquímica
+        - Genoma
+        - Cerebro/aprendizaje
+        - Mundo/objetos
+        - Persistencia
+        - Interfaz/documentación
+    validations:
+      required: true

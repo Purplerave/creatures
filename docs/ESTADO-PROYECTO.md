@@ -1,36 +1,54 @@
 # Creatures — estado del proyecto
 
-**Actualizado:** 12-oct-2026 · **Repo:** https://github.com/Purplerave/creatures
-**Estado:** avance de Fase 3 implementado en `arena/538d2007-creatures`; pendiente de revisión cruzada antes de integrar en `main`.
+**Actualizado:** 13-oct-2026 · **Repo:** https://github.com/Purplerave/creatures
 
-## Resumen
+## Auditoría de GitHub
+
+Revisión del remoto `main` (`6daad082`, merge del PR #4):
+
+- PRs **#1, #2, #3 y #4 están fusionados**; no hay pull requests abiertos.
+- No hay issues abiertos.
+- La última ejecución de GitHub Actions sobre `main` figura **success** ([run 38292996496](https://github.com/Purplerave/creatures/actions/runs/38292996496)).
+- El repositorio no tiene un backlog GitHub abierto para las fases que faltan; esas tareas están descritas aquí y en [`REVISIONES.md`](REVISIONES.md).
+- `main` tampoco tiene licencia declarada, release/tag, `CONTRIBUTING.md` ni plantillas de issue/PR. No conviene inventar una licencia sin autorización.
+
+La rama de trabajo de esta sesión, `arena/4651a715-creatures`, contiene cambios locales posteriores a ese `main`; todavía no hay PR/CI remoto para esos cambios. Esta rama añade guía de contribución y plantillas para bugs, mejoras y pull requests; aún no son visibles en GitHub remoto.
+
+## Resumen funcional
 
 | Área | Estado | Notas |
 |---|---|---|
-| **Fase 0 — Andamiaje y bioquímica** | ✅ Implementado | TypeScript + Vite; motor determinista con 8 drives, 6 químicos y reacciones extensibles. |
-| **Visuales L1** | ✅ Implementado | `CanvasVisuals`, paths Canvas/`Path2D`, estados de ánimo derivados de drives y hábitat CSS. |
-| **Genoma** | ✅ Implementado | Genes extensibles, mutación determinista, fenotipo y serialización; documentado en [`GENOME.md`](GENOME.md). |
-| **Vocabulario** | ✅ Implementado | Enseñanza por asociación, confianza, olvido y serialización; el input al cerebro sigue deliberadamente sin definir. Ver [`VOCAB.md`](VOCAB.md). |
-| **Cerebro v0.5 / avance Fase 3** | 🟡 Implementado en esta rama; revisión pendiente | MLP determinista + ε-greedy + aprendizaje Hebbiano modulado por recompensa; codebook de acciones, recompensa por drives y UI de premio/castigo. Detalles y límites en [`CEREBRO.md`](CEREBRO.md). |
-| **Fase 4 — Mundo y objetos** | ⏳ Pendiente | No hay comida, pelota interactiva ni eventos de mundo. Por eso la recompensa automática todavía no es contingente con lo que hace la criatura. |
-| **Fase 5 — Persistencia de partida** | ⏳ Pendiente | El cerebro, genoma y vocabulario son serializables, pero aún no hay guardado/carga integrado en UI/IndexedDB. |
+| **Fase 0 — andamiaje y bioquímica** | ✅ Implementada | TypeScript + Vite; motor determinista con 8 drives, 6 químicos, reacciones extensibles e impulsos atómicos de mundo. |
+| **Visuales L1** | ✅ Implementadas | `CanvasVisuals`, paths Canvas/`Path2D`, ánimo derivado de drives y hábitat CSS. |
+| **Genoma** | ✅ Implementado | Genes extensibles, mutación determinista, fenotipo y serialización. |
+| **Vocabulario** | ✅ Implementado | Enseñanza por asociación, confianza, olvido y serialización; el vector cerebral no consume palabras aún. |
+| **Cerebro v0.5 / Fase 3** | ✅ Integrado en `main` | MLP determinista + ε-greedy + Hebbiano modulado por recompensa; debug D2 y panel de actividad. La prueba de comida real sigue pendiente del mundo. |
+| **Fase 4 — mundo por eventos** | 🟡 Primer corte en esta rama | Cuatro objetos, cinco verbos, enfriamientos, impulsos a bioquímica, efecto visible y control manual de prueba. No hay movimiento/colisiones/habitaciones. |
+| **Fase 5 — persistencia de partida** | ⏳ Pendiente | Cerebro, genoma y vocabulario se serializan por separado; motor y mundo no, y no hay guardado/carga coordinado en UI/IndexedDB. |
 
-## Cerebro: qué está validado y qué no
+## Mundo implementado en esta rama
 
-- La entrada es de 15 valores: 8 drives, 3 estímulos químicos provisionales y 4 genes provisionales.
-- La salida usa cinco acciones (`descansar`, `acurrucarse`, `observar`, `explorar`, `buscar`) transportadas por un código escalar en [-1, 1]. El adaptador aprobado y su superficie de interfaz permanecen intactos.
-- El bucle de demo aplica premio/castigo manual y, si está activado, recompensa cada decisión anterior con el cambio de malestar. El panel hace visibles acciones, probabilidades, decisiones, refuerzos y ε.
-- Las pruebas verifican determinismo, aprendizaje de una acción objetivo en un problema de bandit sintético, refuerzo negativo, reversión de preferencia, serialización/reproducción del PRNG e integración con genoma, bioquímica y adaptador.
-- **No se afirma que esté cumplido el hito completo de la hoja de ruta** («buscar comida en <5 min»): sin objetos/mundo no existe una tarea de búsqueda de comida. Ese hito depende de Fase 4. El A/B sintético y el interruptor de refuerzo sirven para validar el mecanismo, no sustituyen la prueba de juego final.
+`src/world/` asocia `descansar` y `acurrucarse` al nido; `buscar` al comedero; `explorar` a la pelota; y `observar` a la luz suave. Los objetos imponen un tiempo de recuperación determinista. Si están listos, devuelven impulsos; `BiochemEngine.applyImpulse()` valida todo el lote antes de aplicar cambios y recorta drives/químicos a sus rangos.
 
-## Decisiones para revisión cruzada
+La app mantiene cada decisión durante **0,75 segundos simulados**. El refuerzo automático compara el malestar al cerrar ese intervalo con el baseline anterior, para que el resultado de la acción pueda afectar la señal. **No es todavía aprendizaje de navegación:** los objetos no tienen coordenadas y el agente no camina hacia ellos. La UI ofrece **Probar acción** para verificar el efecto individual de cada verbo; esa intervención no se acredita al cerebro.
 
-1. Ratificar el codebook escalar actual o acordar una salida one-hot. Cambiar a one-hot tocaría el adaptador aprobado y su test de interfaz; no se hace unilateralmente.
-2. Confirmar los cuatro genes y los tres estímulos provisionales. La configuración del adaptador permite sustituir esos mapeos.
-3. Definir si/how el vocabulario se traduce a `BrainInputs`; no se inventa un puente implícito.
-4. Diseñar mundo/objetos y efectos de las acciones para que la reducción de drives dependa de la conducta.
+## Qué está validado y qué no
 
-## Verificación local de esta entrega
+- Tests sintéticos cubren determinismo, aprendizaje de una acción objetivo, refuerzo negativo y reversión de preferencia.
+- Los tests del mundo comprueban que cada verbo produce el objeto/impulso esperado, que los enfriamientos usan tiempo simulado y que buscar comida puede reducir el malestar.
+- **No se afirma que se cumpla el hito «buscar comida en <5 min»**: todavía falta navegación, objetos espaciales y un protocolo A/B de juego real.
+- El panel básico de actividad cerebral está en `main.ts`. El puerto de debug D2 existe, pero no hay un módulo de visualización L2 independiente en `src/render/`.
+
+## Decisiones todavía abiertas
+
+1. Ratificar el codebook de acción escalar o acordar one-hot. El primer corte del mundo usa los IDs de acción actuales.
+2. Confirmar los mapeos provisionales de cuatro genes de entrada y tres químicos de estímulo.
+3. Definir si/how el vocabulario se codifica en `BrainInputs`; no se añade un puente implícito.
+4. Calibrar efectos/cooldowns y decidir movimiento, posición y alcance de las interacciones.
+
+Son decisiones de diseño pendientes; no hay PR abierto que esté esperando su aprobación.
+
+## Verificación local
 
 ```bash
 npm ci
@@ -39,10 +57,11 @@ npm test
 npm run build
 ```
 
-Resultado esperado/registrado para esta rama: **typecheck limpio, 27 archivos de tests / 207 tests en verde y build Vite correcto**. CI de GitHub ejecuta los mismos tres pasos en push y pull request.
+En esta rama: **30 archivos de tests / 223 tests** pasan en la última ejecución. El workflow `.github/workflows/ci.yml` repite typecheck, tests y build en cada push y pull request.
 
-## Reglas de coordinación
+## Siguientes pasos recomendados
 
-- Trabajar en ramas; `main` no se integra sin revisión cruzada.
-- Antes de proponer la integración, pasar `npm run typecheck`, `npm test` y `npm run build`.
-- Coordinar revisiones y decisiones en [`REVISIONES.md`](REVISIONES.md) y en GitHub. El pad de ScratchThePad no está disponible para los agentes del repo.
+1. Añadir posición/movimiento y render de objetos para que el verbo provoque una interacción espacial real.
+2. Definir pruebas A/B y criterios de aprendizaje autónomo antes de anunciar el hito de comida.
+3. Serializar el estado del motor/mundo y coordinar guardado/carga de toda la partida.
+4. Resolver las decisiones de mapeo anteriores con las personas responsables antes de cambiar contratos.

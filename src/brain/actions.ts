@@ -9,9 +9,9 @@
  * escalar en [-1, 1]; quien consume la salida (main.ts) la decodifica con
  * `actionFromValue()` usando este mismo codebook.
  *
- * Eje del codebook: PASIVIDAD (-1) ↔ ACTIVIDAD (+1). Cuando exista mundo
- * (Fase 4: objetos y eventos), cada `id` se asociará al script/evento
- * correspondiente y el valor escalar seguirá siendo su código de transporte.
+ * Eje del codebook: PASIVIDAD (-1) ↔ ACTIVIDAD (+1). `src/world/world.ts`
+ * resuelve hoy los cinco ids como verbos de un mundo mínimo por eventos; su
+ * mapeo a objetos y efectos todavía es provisional.
  *
  * ⚠️ Mapeo PROVISIONAL (ver docs/CEREBRO.md y docs/ADAPTER.md): la alternativa
  * one-hot requiere cambiar el adaptador y se propone a la CEO/Tecnotron.

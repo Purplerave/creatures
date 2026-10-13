@@ -1,51 +1,38 @@
-# Integración de genoma, cerebro y vocabulario en runtime
+# Integración de genoma, cerebro, mundo y vocabulario
 
-Esta nota documenta la composición actual del runtime en la rama de trabajo. La integración mantiene al motor como autoridad del estado y a los módulos de cerebro/visuales/vocabulario como consumidores o componentes independientes.
+La integración mantiene al motor como autoridad del estado bioquímico. Cerebro y mundo intercambian acciones/impulsos; visuales y UI leen snapshots. El motor solo cambia por `tick()` y por impulsos validados de eventos.
 
 ## Genoma → bioquímica y cerebro
 
-- `Genome.getPhenotype()` se calcula una vez al construir el runtime.
-- El mismo fenotipo se entrega a `BiochemEngine` para aplicar deltas de `decayPerSecond` y a la fábrica del cerebro para sus knobs (`hiddenSize`, `epsilonInitial`, `learningRate`).
-- `createBrainRuntime()` adapta el cerebro al contrato `IBrain` y obtiene el vector genómico en cada `think()`, por lo que un cambio del genoma se refleja en el vector siguiente. El fenotipo aplicado al motor y los knobs de la fábrica son snapshots; para aplicar una mutación hay que reconstruir `BiochemEngine` y el runtime cerebral. La app aún no muta el genoma en ejecución.
-- Mapeo provisional, inspirado en los cuatro rasgos del prototipo Bichito:
-  `[alerta, sociabilidad, resiliencia, metabolismo]` → curiosidad, vínculo social, resiliencia y apetito.
-- El mapeo se puede reemplazar mediante `genomeInputGenes`; debe confirmarlo Tecnotron antes de considerarlo definitivo.
+- `Genome.getPhenotype()` se calcula al construir el runtime.
+- El fenotipo se entrega a `BiochemEngine` para aplicar deltas de `decayPerSecond` y a la fábrica cerebral para sus knobs (`hiddenSize`, `epsilonInitial`, `learningRate`).
+- `createBrainRuntime()` consulta el vector de genes en cada `think()`. El fenotipo aplicado al motor y los knobs de la fábrica son snapshots; para aplicar una mutación hay que reconstruir motor y runtime cerebral. La app aún no muta el genoma en ejecución.
+- Mapeo provisional de entradas genómicas: `[alerta, sociabilidad, resiliencia, metabolismo]`. El helper `genomeInputGenes` permite reemplazarlo, pendiente de confirmación.
 
-El genoma inicial usa valores `0.5`: los genes de rasgo producen delta bioquímico cero y los genes de knobs seleccionan el punto medio de sus rangos. Con esos valores la app construye `BrainV05` con **34 neuronas ocultas, ε inicial 0.325 y η 0.155**: los knobs ya tienen efecto real sobre la red.
+Con el genoma por defecto (todos los genes a `0.5`) el cerebro se construye con **34 neuronas ocultas, ε inicial 0.325 y η 0.155**.
+
+## Mundo por eventos → bioquímica → recompensa
+
+`src/world/` enlaza `descansar`/`acurrucarse` con el nido, `buscar` con el comedero, `explorar` con la pelota y `observar` con la luz suave. Los objetos imponen enfriamientos deterministas; una interacción disponible devuelve un `BiochemicalImpulse` de drives/químicos.
+
+`BiochemEngine.applyImpulse()` valida todos los IDs y valores del lote antes de mutar ningún campo, aplica los deltas y recorta cada entidad a su rango. El mundo no recibe ni muta el motor directamente.
+
+La app sostiene una decisión cerebral durante **0,75 segundos simulados**. En la decisión siguiente calcula la variación de malestar y, si el refuerzo automático está activo, refuerza la decisión anterior a través del adaptador. El baseline sigue el tiempo mientras el refuerzo está apagado. **Probar acción** en la UI ejecuta un verbo manualmente; se omite el siguiente refuerzo automático para no acreditar al cerebro el cambio externo.
+
+Límite: el mundo aún es abstracto/de eventos, no espacial. No hay posiciones, movimiento, colisiones, salas ni acercamiento a objetos; los verbos usan el objeto asociado directamente. Las magnitudes y cooldowns son valores iniciales, no calibrados.
 
 ## Vocabulario
 
-La app instancia `Vocabulary`, lo avanza con el mismo `dt` simulado y permite enseñar una palabra asociada a comida, pelota o luz. Las asociaciones se refuerzan por repetición, decaen con el tiempo y muestran su confianza en la UI.
+La app instancia `Vocabulary`, lo avanza con el mismo `dt` simulado y permite enseñar palabras asociadas a comida, pelota o luz. Las asociaciones ganan confianza por repetición, decaen con el tiempo y aparecen en la UI.
 
-El vocabulario todavía **no se pasa al cerebro**. `BrainV05Input` dispone de tres valores de estímulo y el contrato de `IVocab` deja pendiente cómo representar las palabras en esos inputs. No se inventa una codificación en esta integración; el mapeo requiere decisión de Tecnotron.
+El vocabulario todavía **no se pasa al cerebro**. `BrainV05Input` tiene tres valores de estímulo; el contrato `IVocab` no define cómo representar palabras en esos canales. No se inventa una codificación implícita; queda por decidir.
 
 ## Depuración del cerebro (D2)
 
-`BrainV05Adapter.getDebugState()` devuelve un `BrainDebugState` (acción, confianza, si vino de exploración ε, activaciones ocultas, pesos de salida y los genes realmente enviados) para la vista de depuración `src/render/brain-view.ts` (tarea L2). Es una **excepción autorizada y acotada** a la regla del cerebro encapsulado; el contrato completo y sus reglas están en `docs/ADAPTER.md` (sección Debug). Con `BrainV05` real conectado, su debug trae otra forma (`BrainV05DebugState`: scores, probabilities, lastDecision); los arrays de activaciones/pesos siguen saliendo `[]` hasta que la dueña del cerebro amplíe su debug — no se inventan valores. La superficie pública del módulo se importa desde `src/brain/index.ts`.
+`BrainV05Adapter.getDebugState()` proporciona el puerto D2 acotado: última acción, confianza, exploración, genes usados y arrays de activaciones/pesos vacíos (el adaptador no filtra internals del MLP). El modelo `BrainV05` ofrece además su propio `BrainV05DebugState` de puntuaciones, probabilidades, recompensa y contadores.
 
-## Cerebro real (conectado en esta rama)
+La UI actual muestra decisión, probabilidades, ε y contadores en `main.ts`; el modelo lo lee la composición que lo construye. El módulo independiente de render de depuración L2 (`src/render/brain-view.ts`) no está presente en este checkout.
 
-`createBrainRuntime()` recibe ahora una fábrica que instancia `BrainV05`
-(`src/brain/brain-v05.ts`), un MLP 15 → `hiddenSize` → 5 acciones con ε-greedy
-(suelo 5 %) y aprendizaje Hebbiano modulado por recompensa. Cumple
-`BrainV05Like` sin `implements` forzado en el consumidor y el adaptador no se ha
-modificado. `PlaceholderBrain` se conserva para tests y regresión.
+## Persistencia pendiente
 
-### Bucle de refuerzo
-
-`main.ts` es quien decide cuándo reforzar (el adaptador solo recuerda la última
-acción):
-
-- **Automático:** cada tick calcula el malestar de los drives
-  (`src/brain/reward.ts`) y refuerza con `clamp((malestarAntes − malestarAhora) · 6, −1, 1)`.
-  Se puede apagar con el interruptor del panel para hacer el A/B. El malestar se
-  sigue actualizando apagado, para que al reactivarlo no haya un salto acumulado.
-- **Manual:** los botones **Premiar (+1)** y **Castigar (−1)** refuerzan la
-  última decisión a través de `BrainV05Adapter.reinforce()`.
-- La semilla del cerebro es fija (`20261012`): la partida es reproducible.
-
-Con el mundo aún sin objetos, la señal automática está dominada por la deriva
-intrínseca de los drives (la hambre sube sola) y es poco contingente con la
-acción; el aprendizaje visible de la demo viene de los botones. En cuanto haya
-comida/juego/caricias, la misma función dará aprendizaje por reducción de drive
-sin cambios.
+Cerebro, genoma y vocabulario son serializables por separado. Falta una serialización versionada del motor y del mundo y un coordinador de partida que guarde/restaure todos los módulos desde UI o almacenamiento local. No se debe considerar implementada la Fase 5.

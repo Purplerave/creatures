@@ -25,11 +25,11 @@ creatures/
 ├── vite.config.ts        # build → dist/
 ├── docs/FASE0.md         # este documento
 ├── src/
-│   ├── main.ts           # composición del runtime, snapshots y UI de drives/vocabulario
+│   ├── main.ts           # composición del runtime, decisiones y UI de mundo/drives/vocabulario
 │   ├── contracts/        # CONTRATOS (interfaces tipo acuerdo entre módulos)
-│   │   ├── types.ts      # DriveId, DriveState, ChemicalId, TickResult
+│   │   ├── types.ts      # DriveId, DriveState, ChemicalId, TickResult, BiochemicalImpulse
 │   │   ├── ibrain.ts     # IBrain { think(inputs) → BrainOutput }
-│   │   ├── ibiochem.ts   # IBiochem { tick, getDrive, getChemical }
+│   │   ├── ibiochem.ts   # IBiochem { tick, applyImpulse, getDrive, getChemical }
 │   │   ├── ivisuals.ts   # IVisuals (puerto Canvas de solo lectura)
 │   │   ├── igenome.ts    # IGenome + PhenotypeConfig
 │   │   └── ivocab.ts     # IVocab (palabra → estímulo, con olvido)
@@ -43,6 +43,7 @@ creatures/
 │   │   └── placeholder-brain.ts # cerebro neutro, solo para tests
 │   ├── genome/          # genes extensibles, PRNG, mutación y fenotipo
 │   ├── vocab/            # Vocabulary implements IVocab
+│   ├── world/            # CreatureWorld: objetos, enfriamientos e impulsos
 │   ├── visuals/
 │   │   └── canvasVisuals.ts # paths de Bichito, estados de ánimo y animación procedural
 │   └── biochem/          # MOTOR de bioquímica (Fase 0 + capa phenotype)
@@ -58,14 +59,15 @@ creatures/
 
 | Contrato | Quién lo implementa | Quién lo consume |
 |---|---|---|
-| `IBiochem` (`src/contracts/ibiochem.ts`) | **Yo (Fase 0)** → `biochem/engine.ts` | cerebro (inputs por tick) y visuales (snapshot para dibujar) |
+| `IBiochem` (`src/contracts/ibiochem.ts`) | `biochem/engine.ts` | cerebro/visuales leen snapshots; `world/` devuelve impulsos que el motor valida y aplica |
 | `IBrain` (`src/contracts/ibrain.ts`) | `BrainV05Adapter` sobre `BrainV05Like`; la app usa el cerebro real `BrainV05` (MLP + ε-greedy + Hebbiano) | `main.ts` le pasa snapshots de drives/químicos, mapea genes y lo refuerza (premio/castigo y reducción de malestar) |
 | `IVisuals` (`src/contracts/ivisuals.ts`) | `visuals/canvasVisuals.ts` (`CanvasVisuals`) — port de Bichito a Canvas 2D | `main.ts` le pasa snapshots; el render nunca toca la simulación |
 | Genoma y palabras | `Genome` (`src/genome/`) y `Vocabulary` (`src/vocab/`) | el runtime aplica fenotipo al motor; la UI enseña vocabulario; su codificación cerebral sigue pendiente |
 
 Regla común: los contratos son interfaces pequeñas; cada módulo es sustituible
-implementando su interfaz. El cerebro y el render **leen** snapshots; solo el
-motor escribe estado de simulación.
+implementando su interfaz. El cerebro, los visuales y la UI **leen** snapshots.
+El mundo describe efectos como impulsos; solo el motor valida y escribe los
+niveles bioquímicos.
 
 ## Motor de bioquímica
 
@@ -129,9 +131,12 @@ const engine = new BiochemEngine({
 const snapshot = engine.tick(1 / 60); // { dt, drives, chemicals }
 engine.getDrive('hambre');             // { level, target }
 engine.getChemical('dopamina');        // 0..1
+engine.applyImpulse({ drives: { hambre: -0.08 }, chemicals: { glucosa: 0.1 } });
 ```
 
-Snapshot = copia: mutarlo no afecta al motor.
+Snapshot = copia: mutarlo no afecta al motor. `applyImpulse()` valida el lote
+completo antes de aplicarlo y limita niveles a los clamps registrados; lo usa el
+mundo por eventos para comunicar comida, descanso, juego y luz.
 
 ## Tests
 
@@ -143,6 +148,8 @@ Snapshot = copia: mutarlo no afecta al motor.
 - `extensibility.test.ts` — un drive nuevo registrado se recoge sin tocar el motor.
 - `coupling.test.ts` — subir/quitar químico mueve el drive (hambre/miedo/curiosidad).
 - `reactions.test.ts` — A→B, cadena completa y ley exponencial.
+- `biochem-impulse.test.ts` — lote atómico, clamps y validación de impulsos.
+- `world.test.ts` — verbos, objetos, enfriamientos y recompensa contingente.
 
 ## Puerto visual de Canvas
 
@@ -166,15 +173,13 @@ cómo representar palabras en los tres canales de estímulo.
 
 ## Estado / siguientes pasos
 
-- Fase 0 y port visual L1: implementados.
-- Genoma y vocabulario: implementados; composición del runtime y UI de enseñanza disponibles.
-- Cerebro real (Fase 3): implementado en `src/brain/brain-v05.ts` con su bucle de
-  refuerzo en `main.ts` y panel propio en la UI. Modelo, fórmulas y pruebas en
-  [`CEREBRO.md`](CEREBRO.md).
-- Pendiente de validación con Tecnotron/CEO: el mapeo de los cuatro genes de
-  entrada y de los tres estímulos químicos, cómo (o si) entra el vocabulario en
-  `BrainInputs`, y el codebook escalar de la acción frente a la alternativa
-  one-hot (que exigiría cambiar el adaptador aprobado).
-- Siguiente frente natural: mundo y objetos (Fase 4) para que la recompensa por
-  reducción de drive sea contingente con la acción, y persistencia (Fase 5) con
-  el `serialize()` que ya tienen cerebro, genoma y vocabulario.
+- Fase 0, visuales, genoma, vocabulario y cerebro real v0.5: implementados; el
+  cerebro está integrado en `main` y tiene pruebas de aprendizaje sintético.
+- Primer corte de Fase 4: `src/world/` asocia cinco verbos a cuatro objetos y
+  aplica impulsos bioquímicos mediante el motor. Aún no hay movimiento, posición,
+  colisiones ni habitaciones.
+- Decisiones de diseño todavía abiertas: mapeos provisionales de genes y
+  estímulos, codificación de vocabulario y codebook escalar frente a one-hot.
+- Siguientes pasos: mundo espacial y protocolo A/B para aprendizaje real; después
+  serialización del motor/mundo y guardado coordinado de partida (Fase 5).
+  Estado detallado en [`ESTADO-PROYECTO.md`](ESTADO-PROYECTO.md).

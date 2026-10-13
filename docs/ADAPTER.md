@@ -57,7 +57,7 @@ BiochemEngine ──▶ BrainInputs (contracts/ibrain.ts)
         → BrainDebugState para la vista L2 (ver sección Debug)
 ```
 
-## Mapeos provisionales (⚠️ confirmar con Tecnotron/CEO en el pad)
+## Mapeos provisionales (⚠️ confirmar con las personas responsables; coordinar por GitHub)
 
 | Entrada | Mapeo actual | Motivo / alternativa |
 |---|---|---|
@@ -69,8 +69,9 @@ BiochemEngine ──▶ BrainInputs (contracts/ibrain.ts)
 
 ## Debug (D2): `getDebugState()` y `BrainDebugState`
 
-Puerto de depuración para `src/render/brain-view.ts` (tarea L2 de lmarena).
-Se consume desde la superficie pública del módulo:
+Puerto de depuración D2 para consumidores que quieran una vista L2. Este
+checkout no incluye `src/render/brain-view.ts`; la app actual tiene un panel de
+actividad cerebral en `main.ts`. Se consume desde la superficie pública del módulo:
 
 ```ts
 import { BrainV05Adapter } from '../src/brain'; // o desde './brain'
@@ -86,7 +87,7 @@ const state = brain.getDebugState(); // BrainDebugState
 | `confidence` | `number` | Confianza de la decisión, recortada a 0..1; `0` sin `think()` | ✅ siempre (real) |
 | `explored` | `boolean` | `true` si la acción salió de la exploración ε (no del argmax) | ✅ siempre (real) |
 | `hasThink` | `boolean` | `false` ⇒ aún no se ha llamado a `think()` y el resto es neutro | ✅ siempre |
-| `hiddenActivations` | `number[]` | Activaciones de la capa oculta, en orden de neurona | ⚠️ `[]` — `BrainV05` real ya está conectado, pero su debug (`BrainV05DebugState`) expone scores/probabilities/lastDecision, **no** estas claves; rellenarlas requiere que la dueña del cerebro amplíe su debug (pendiente de CEO) |
+| `hiddenActivations` | `number[]` | Activaciones de la capa oculta, en orden de neurona | ⚠️ `[]` — el adaptador no filtra internals; `BrainV05DebugState` usa scores/probabilities/lastDecision |
 | `outputWeights` | `number[]` | Pesos de la capa de salida, plano (fila a fila) | ⚠️ `[]` — ídem (solo trae `weightNorm`/`weightAbsMax`, no la matriz) |
 | `genomeInputs` | `number[]` | Los 4 genes (0..1) realmente enviados como `input.genome` en el último `think()`; `[]` sin `think()` | ✅ siempre (lo aporta el adaptador) |
 
@@ -120,9 +121,11 @@ se envía aún a `BrainInputs`**: el mapeo a los tres estímulos requiere decisi
 de Tecnotron, para no codificar una interpretación no aprobada.
 
 La app (`main.ts`) construye `BrainV05` con los knobs del fenotipo y una semilla
-fija, y es también quien llama a `reinforce()`: con la reducción de malestar de
-cada tick (interruptor «refuerzo automático») y con los botones premio/castigo.
-El adaptador no decide cuándo reforzar, solo recuerda la última acción.
+fija, y es también quien llama a `reinforce()`: con la reducción de malestar
+al cerrar cada intervalo de decisión de 0,75 s (interruptor «refuerzo
+automático») y con los botones premio/castigo. `src/world/` conecta esos verbos
+a objetos e impulsos bioquímicos; el adaptador no decide cuándo reforzar, solo
+recuerda la última acción.
 
 ## Archivos
 
@@ -142,9 +145,10 @@ El adaptador no decide cuándo reforzar, solo recuerda la última acción.
 - `src/brain/actions.ts` — espacio de acciones (codebook escalar en [-1, 1]) y
   helpers de decodificación para quien consume `BrainOutput.actions`.
 - `src/brain/reward.ts` — malestar y recompensa por reducción de drive.
+- `src/world/` — mundo de eventos, objetos, cooldowns e impulsos bioquímicos.
 - `src/brain/placeholder-brain.ts` — salida neutra constante (acción 0,
   confianza 0); ya no se usa en la app, se mantiene para tests y regresión.
-- `src/main.ts` — compone motor, adaptador, visuales y `Vocabulary` en un único bucle.
+- `src/main.ts` — compone motor, adaptador, mundo, visuales, vocabulario y UI en el bucle.
 - `tests/adapter-*.test.ts` (incl. `adapter-debug.test.ts`, D2),
   `tests/brain-runtime.test.ts` (+ helper `tests/fake-brain.ts`).
 - `src/brain/stub.ts` — se mantiene intacto (sin eliminar nada de Fase 0).

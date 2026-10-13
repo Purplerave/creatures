@@ -1,9 +1,9 @@
 /**
  * Stub desechable del contrato IBrain.
  *
- * ⚠️ Este archivo histórico es temporal: sirve para que la Fase 0 compile
- * contra IBrain y para pruebas. La app actual usa `PlaceholderBrain` tras el
- * adaptador; no guardar estado ni acoplar el stub a otros módulos.
+ * Archivo histórico de Fase 0 para pruebas del contrato IBrain. La app actual
+ * usa `BrainV05` detrás de `BrainV05Adapter`; este stub neutro no participa en
+ * el runtime y no debe ganar estado ni acoplarse a otros módulos.
  */
 import type { BrainInputs, BrainOutput, IBrain } from '../contracts/ibrain';
 

@@ -1,9 +1,10 @@
 /**
  * Arranque: un snapshot alimenta la bioquímica, el cerebro, los visuales y la UI.
  *
- * Bucle de aprendizaje (Fase 3): el cerebro v0.5 decide en cada frame, la UI
- * permite premiar/castigar esa decisión y, opcionalmente, el runtime refuerza
- * solo con la reducción de malestar de los drives (`src/brain/reward.ts`).
+ * Bucle de aprendizaje (Fases 3–4): el cerebro v0.5 elige una acción cada
+ * 0,75 s simulados; el mundo por eventos la resuelve contra un objeto y aplica
+ * un impulso bioquímico. La UI permite enseñar manualmente y el refuerzo
+ * automático mide el cambio de malestar entre decisiones.
  */
 import type { RenderState } from './contracts/ivisuals';
 import type { BrainInputs, BrainOutput } from './contracts/ibrain';
@@ -12,12 +13,13 @@ import { BiochemEngine } from './biochem';
 import type { BrainV05Adapter } from './brain/adapter';
 import { createBrainRuntime } from './brain/runtime';
 import { BrainV05 } from './brain/brain-v05';
-import { actionNameFromValue } from './brain/actions';
+import { actionFromValue, actionNameFromValue } from './brain/actions';
 import { DEFAULT_REWARD_GAIN, driveDiscomfort, driveReductionReward } from './brain/reward';
 import { Genome } from './genome';
 import { Vocabulary } from './vocab';
 import type { VocabEntry } from './contracts/ivocab';
 import { CanvasVisuals, deriveMood, MOOD_LABELS } from './visuals/canvasVisuals';
+import { CreatureWorld } from './world';
 
 const canvas = document.getElementById('app');
 const moodBadge = document.getElementById('mood');
@@ -37,6 +39,11 @@ const rewardButton = document.getElementById('reward-button');
 const punishButton = document.getElementById('punish-button');
 const autoRewardToggle = document.getElementById('auto-reward');
 const brainFeedback = document.getElementById('brain-feedback');
+const worldGrid = document.getElementById('world-grid');
+const worldAction = document.getElementById('world-action');
+const worldFeedback = document.getElementById('world-feedback');
+const worldActionForm = document.getElementById('world-action-form');
+const worldActionSelect = document.getElementById('world-action-select');
 
 if (!(canvas instanceof HTMLCanvasElement)) throw new Error('Falta el canvas #app');
 if (!moodBadge) throw new Error('Falta el indicador de estado #mood');
@@ -61,6 +68,9 @@ if (!(rewardButton instanceof HTMLButtonElement) || !(punishButton instanceof HT
   throw new Error('Faltan los botones de premio/castigo');
 }
 if (!(autoRewardToggle instanceof HTMLInputElement)) throw new Error('Falta el interruptor #auto-reward');
+if (!worldGrid || !worldAction || !worldFeedback) throw new Error('Falta el panel del mundo');
+if (!(worldActionForm instanceof HTMLFormElement)) throw new Error('Falta el formulario de prueba del mundo');
+if (!(worldActionSelect instanceof HTMLSelectElement)) throw new Error('Falta el selector de acciones del mundo');
 const moodBadgeElement = moodBadge;
 const teachFormElement = teachForm;
 const wordInputElement = wordInput;
@@ -75,6 +85,11 @@ const brainEpsilonFillElement = brainEpsilonFill;
 const brainEpsilonValueElement = brainEpsilonValue;
 const brainFeedbackElement = brainFeedback;
 const autoRewardElement = autoRewardToggle;
+const worldGridElement = worldGrid;
+const worldActionElement = worldAction;
+const worldFeedbackElement = worldFeedback;
+const worldActionFormElement = worldActionForm;
+const worldActionSelectElement = worldActionSelect;
 const rewardButtonElement = rewardButton;
 const punishButtonElement = punishButton;
 
@@ -99,6 +114,8 @@ const DRIVE_LABELS: Record<string, string> = {
 const BRAIN_SEED = 20261012;
 /** Intensidad del premio/castigo manual (rango del contrato: [-1, 1]). */
 const MANUAL_REWARD = 1;
+/** El agente elige y mantiene una acción durante este intervalo simulado. */
+const BRAIN_DECISION_INTERVAL = 0.75;
 
 const genome = new Genome();
 const phenotype = genome.getPhenotype();
@@ -130,6 +147,7 @@ const engine = new BiochemEngine({
 });
 const brain: BrainV05Adapter = brainRuntime.brain;
 const vocabulary = new Vocabulary();
+const world = new CreatureWorld();
 
 interface DriveReadout {
   meter: HTMLDivElement;
@@ -201,6 +219,51 @@ for (const action of actionSpace) {
   actionReadouts.set(action.id, { row, fill, probability });
 }
 
+interface WorldObjectReadout {
+  card: HTMLElement;
+  status: HTMLOutputElement;
+  uses: HTMLOutputElement;
+}
+
+const worldObjectReadouts = new Map<string, WorldObjectReadout>();
+for (const object of world.getSnapshot().objects) {
+  const card = document.createElement('article');
+  card.className = 'world-object';
+  card.dataset.objectId = object.id;
+
+  const heading = document.createElement('div');
+  heading.className = 'world-object-heading';
+  const icon = document.createElement('span');
+  icon.className = 'world-object-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = object.icon;
+  const name = document.createElement('h3');
+  name.textContent = object.name;
+  heading.append(icon, name);
+
+  const description = document.createElement('p');
+  description.className = 'world-object-description';
+  description.textContent = object.description;
+
+  const action = document.createElement('p');
+  action.className = 'world-object-actions';
+  action.textContent = object.actions.join(' · ');
+
+  const state = document.createElement('div');
+  state.className = 'world-object-state';
+  const status = document.createElement('output');
+  status.className = 'world-object-status';
+  status.textContent = 'Listo';
+  const uses = document.createElement('output');
+  uses.className = 'world-object-uses';
+  uses.textContent = '0 usos';
+  state.append(status, uses);
+
+  card.append(heading, description, action, state);
+  worldGridElement.append(card);
+  worldObjectReadouts.set(object.id, { card, status, uses });
+}
+
 const visuals = new CanvasVisuals();
 visuals.mount(canvas);
 
@@ -209,10 +272,13 @@ let frame = 0;
 let simTime = 0;
 let lastFrameTime = performance.now();
 let nextVocabularyRefresh = 0;
-let nextBrainRefresh = 0;
+let nextWorldRefresh = 0;
+let nextBrainDecision = 0;
 let animationFrame = 0;
 let previousDiscomfort = 0;
+let suppressNextAutoReward = false;
 let autoReward = autoRewardElement.checked;
+let lastWorldSource: 'brain' | 'manual' = 'brain';
 
 function brainInputs(snapshot: TickResult, tick: number): BrainInputs {
   return { drives: snapshot.drives, chemicals: snapshot.chemicals, tick };
@@ -272,6 +338,25 @@ function renderBrain(): void {
     meter?.setAttribute('aria-valuenow', String(percentage));
     readout.row.dataset.chosen = decision?.id === action.id ? 'true' : 'false';
   }
+}
+
+function renderWorld(): void {
+  const snapshot = world.getSnapshot();
+  for (const object of snapshot.objects) {
+    const readout = worldObjectReadouts.get(object.id);
+    if (!readout) continue;
+    readout.card.dataset.ready = String(object.ready);
+    readout.status.textContent = object.ready
+      ? 'Listo'
+      : `Recuperándose · ${object.cooldownRemaining < 1 ? '<1' : object.cooldownRemaining.toFixed(1)} s`;
+    readout.uses.textContent = `${object.uses} ${object.uses === 1 ? 'uso' : 'usos'}`;
+  }
+
+  const lastActionId = snapshot.lastInteraction?.actionId;
+  const lastAction = actionSpace.find((action) => action.id === lastActionId);
+  worldActionElement.textContent = `${lastWorldSource === 'manual' ? 'Prueba manual' : 'Cerebro'} · ${
+    lastAction?.name ?? 'sin acción'
+  }`;
 }
 
 function actionReadoutIndex(actions: readonly { id: string }[], id: string): number {
@@ -350,6 +435,35 @@ function teachWord(event: SubmitEvent): void {
 }
 
 /** Premio/castigo manual sobre la ÚLTIMA decisión (a través del adaptador). */
+function performWorldAction(actionId: string, source: 'brain' | 'manual'): void {
+  const interaction = world.performAction(actionId);
+  lastWorldSource = source;
+  if (interaction.applied && interaction.impulse) engine.applyImpulse(interaction.impulse);
+
+  // Una intervención de prueba cambia el estado del mundo, pero no debe
+  // atribuirse a la acción anterior que tomó el cerebro.
+  if (source === 'manual' && interaction.applied) {
+    suppressNextAutoReward = true;
+    previousDiscomfort = driveDiscomfort(engine.tick(0).drives);
+  }
+
+  const prefix = source === 'manual' ? 'Prueba manual' : 'Acción del cerebro';
+  const note = source === 'manual' && interaction.applied
+    ? ' No se enseña al cerebro con esta prueba.'
+    : '';
+  worldFeedbackElement.textContent = `${prefix}: ${interaction.message}${note}`;
+  renderWorld();
+}
+
+function onWorldActionSubmit(event: SubmitEvent): void {
+  event.preventDefault();
+  try {
+    performWorldAction(worldActionSelectElement.value, 'manual');
+  } catch (error) {
+    worldFeedbackElement.textContent = error instanceof Error ? error.message : 'No se pudo ejecutar la acción.';
+  }
+}
+
 function manualReinforce(reward: number): void {
   const before = brainModel.getDebugState();
   brain.reinforce(reward);
@@ -380,6 +494,7 @@ function onAutoRewardChange(): void {
 }
 
 teachFormElement.addEventListener('submit', teachWord);
+worldActionFormElement.addEventListener('submit', onWorldActionSubmit);
 rewardButtonElement.addEventListener('click', onRewardClick);
 punishButtonElement.addEventListener('click', onPunishClick);
 autoRewardElement.addEventListener('change', onAutoRewardChange);
@@ -388,8 +503,12 @@ renderVocabulary();
 const initialSnapshot = engine.tick(0);
 previousDiscomfort = driveDiscomfort(initialSnapshot.drives);
 lastBrainOutput = brain.think(brainInputs(initialSnapshot, frame));
+const initialAction = actionFromValue(actionSpace, lastBrainOutput.actions[0] ?? 0);
+if (initialAction) performWorldAction(initialAction.action.id, 'brain');
 renderSnapshot(initialSnapshot);
 renderBrain();
+renderWorld();
+nextBrainDecision = BRAIN_DECISION_INTERVAL;
 
 function loop(now: number): void {
   const dt = Math.min(0.1, Math.max(0, (now - lastFrameTime) / 1000));
@@ -397,25 +516,35 @@ function loop(now: number): void {
   simTime += dt;
   frame += 1;
 
+  world.advance(dt);
   const snapshot = engine.tick(dt);
   vocabulary.tick(dt);
-
-  // Refuerzo de la decisión ANTERIOR con el cambio de malestar de este tick
-  // (crédito temporal: acción → bioquímica → recompensa). El malestar se sigue
-  // actualizando con el refuerzo automático apagado, para que al reactivarlo no
-  // haya un salto acumulado que sature la recompensa.
   const discomfort = driveDiscomfort(snapshot.drives);
-  if (autoReward) {
-    brain.reinforce(driveReductionReward(previousDiscomfort, discomfort));
-  }
-  previousDiscomfort = discomfort;
 
-  lastBrainOutput = brain.think(brainInputs(snapshot, frame));
-  renderSnapshot(snapshot);
+  // La decisión se sostiene 0,75 s simulados. Así cada refuerzo evalúa el
+  // resultado de la acción anterior, no un cambio casi nulo de un fotograma.
+  // Si el refuerzo está apagado, se mueve el baseline continuamente para que
+  // reactivarlo no premie/castigue el tiempo transcurrido con el cerebro parado.
+  if (!autoReward) previousDiscomfort = discomfort;
+  if (simTime >= nextBrainDecision) {
+    const skipReward = suppressNextAutoReward;
+    suppressNextAutoReward = false;
+    if (autoReward && !skipReward) {
+      brain.reinforce(driveReductionReward(previousDiscomfort, discomfort));
+    }
+    previousDiscomfort = discomfort;
 
-  if (simTime >= nextBrainRefresh) {
+    lastBrainOutput = brain.think(brainInputs(snapshot, frame));
+    const selected = actionFromValue(actionSpace, lastBrainOutput.actions[0] ?? 0);
+    if (selected) performWorldAction(selected.action.id, 'brain');
     renderBrain();
-    nextBrainRefresh = simTime + 0.1;
+    nextBrainDecision = simTime + BRAIN_DECISION_INTERVAL;
+  }
+
+  renderSnapshot(snapshot);
+  if (simTime >= nextWorldRefresh) {
+    renderWorld();
+    nextWorldRefresh = simTime + 0.25;
   }
   if (simTime >= nextVocabularyRefresh) {
     renderVocabulary();
@@ -428,6 +557,7 @@ function cleanup(): void {
   cancelAnimationFrame(animationFrame);
   visuals.unmount();
   teachFormElement.removeEventListener('submit', teachWord);
+  worldActionFormElement.removeEventListener('submit', onWorldActionSubmit);
   rewardButtonElement.removeEventListener('click', onRewardClick);
   punishButtonElement.removeEventListener('click', onPunishClick);
   autoRewardElement.removeEventListener('change', onAutoRewardChange);

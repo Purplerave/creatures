@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#eaf1ed" />
-    <title>Creatures — Nilo en Canvas</title>
+    <title>Creatures — Nilo y su mundo</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -199,6 +199,92 @@
         text-align: center;
       }
 
+      .world-panel {
+        margin-top: 14px;
+        padding: 18px 19px 20px;
+        border: 1px solid var(--line);
+        border-radius: 12px 22px 12px 22px;
+        background: var(--surface);
+      }
+      .world-panel .panel-heading { flex-wrap: wrap; }
+      .world-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .world-object {
+        min-width: 0;
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px 5px 10px 5px;
+        background: color-mix(in srgb, var(--surface-soft) 43%, var(--surface));
+      }
+      .world-object[data-ready="false"] { border-color: color-mix(in srgb, var(--amber) 48%, var(--line)); }
+      .world-object-heading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .world-object-icon { flex: 0 0 auto; font-size: 21px; }
+      .world-object-heading h3 { min-width: 0; margin: 0; font-size: 12px; }
+      .world-object-description {
+        min-height: 42px;
+        margin: 7px 0 8px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .world-object-actions {
+        margin: 0 0 9px;
+        color: var(--teal-dark);
+        font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+        text-transform: uppercase;
+      }
+      .world-object-state {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 5px;
+        font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .world-object-status { color: var(--teal-dark); }
+      .world-object[data-ready="false"] .world-object-status { color: #927039; }
+      .world-object-uses { color: var(--muted); }
+      .world-action-form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 9px;
+        margin-top: 12px;
+      }
+      .world-action-label {
+        display: grid;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .world-action-label select {
+        width: 100%;
+        min-height: 39px;
+        padding: 9px 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--ink);
+        background: var(--surface-soft);
+        font: inherit;
+        font-weight: 500;
+      }
+      .world-action-label select:focus {
+        outline: 2px solid color-mix(in srgb, var(--teal) 35%, transparent);
+        border-color: var(--teal);
+      }
+      .world-feedback {
+        min-height: 18px;
+        margin: 9px 0 0;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .world-note { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
       .drives-panel {
         margin-top: 14px;
         padding: 18px 19px 20px;
@@ -521,8 +607,11 @@
         .habitat-header { padding: 15px 15px 0; }
         .creature-stage { min-height: 320px; aspect-ratio: 0.98 / 1; }
         .habitat-caption { padding: 0 14px 13px; font-size: 10px; }
-        .drive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-        .drives-panel, .learning-panel, .brain-panel { padding: 15px 13px 16px; }
+        .drive-grid, .world-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+        .drives-panel, .world-panel, .learning-panel, .brain-panel { padding: 15px 13px 16px; }
+        .world-object { padding: 9px; }
+        .world-action-form { grid-template-columns: 1fr; }
+        .world-action-form .teach-button { grid-column: auto; }
         .brain-action-row { grid-template-columns: minmax(78px, 0.6fr) minmax(0, 1fr) auto; gap: 7px; }
         .brain-controls { gap: 7px; }
         .brain-button { flex: 1 1 auto; }
@@ -542,11 +631,11 @@
     <main class="shell">
       <header class="page-header">
         <div>
-          <p class="eyebrow">Creatures · cerebro v0.5</p>
+          <p class="eyebrow">Creatures · cerebro y mundo</p>
           <h1>Una vida pequeña.<br />Un cerebro que aprende.</h1>
-          <p class="page-description">Nilo se dibuja con paths vectoriales en Canvas. Sus ocho drives animan su expresión y su cerebro —un MLP con ε-greedy y refuerzo Hebbiano— ya decide y aprende de tus premios y castigos.</p>
+          <p class="page-description">Nilo se dibuja en Canvas, atiende ocho necesidades y elige cómo responder. Ahora sus acciones producen efectos en objetos del mundo; puedes guiarlo con premios y castigos.</p>
         </div>
-        <span class="phase-mark">FASE 3 · CEREBRO V0.5</span>
+        <span class="phase-mark">FASES 3–4 · PROTOTIPO</span>
       </header>
 
       <section class="habitat" aria-label="Hábitat de Nilo">
@@ -563,6 +652,32 @@
           </canvas>
         </div>
         <p class="habitat-caption">El entorno y la luz viven en CSS; Nilo respira, parpadea y reacciona en el canvas.</p>
+      </section>
+
+      <section class="world-panel" aria-labelledby="world-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="world-title">Objetos del mundo</h2>
+            <p>El cerebro sostiene cada acción 0,75 s y recibe una consecuencia del objeto correspondiente.</p>
+          </div>
+          <output id="world-action" class="drive-count" aria-label="Origen y verbo de la última acción">Cerebro · sin acción</output>
+        </div>
+        <div id="world-grid" class="world-grid" aria-label="Objetos disponibles en el mundo"></div>
+        <form id="world-action-form" class="world-action-form">
+          <label class="world-action-label" for="world-action-select">
+            Probar un verbo sin entrenar el cerebro
+            <select id="world-action-select" name="action">
+              <option value="descansar">Descansar · nido</option>
+              <option value="acurrucarse">Acurrucarse · nido</option>
+              <option value="observar">Observar · luz suave</option>
+              <option value="explorar">Explorar · pelota</option>
+              <option value="buscar">Buscar estímulo · comedero</option>
+            </select>
+          </label>
+          <button class="teach-button" type="submit">Probar acción</button>
+        </form>
+        <p id="world-feedback" class="world-feedback" role="status" aria-live="polite">El cerebro ejecutará su primera acción al iniciar.</p>
+        <p class="world-note">Las pruebas manuales no entrenan el cerebro. Este primer mundo es de eventos: todavía no hay movimiento, colisiones ni habitaciones.</p>
       </section>
 
       <section class="drives-panel" aria-labelledby="drives-title">

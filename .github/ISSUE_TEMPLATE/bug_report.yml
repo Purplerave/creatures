@@ -1,0 +1,41 @@
+name: Reportar un error
+description: Informar de una regresión reproducible en la app o los módulos
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |-
+        Antes de abrirlo, comprueba si ya existe un issue similar. Incluye los comandos y mensajes de error relevantes.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Qué ocurre
+      description: Describe el comportamiento observado.
+      placeholder: Al ejecutar esta acción, el drive no cambia…
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Pasos para reproducir
+      description: Pasos mínimos, numerados, o un caso de test que falla.
+      placeholder: |-
+        1. Ejecutar `npm run dev`
+        2. Elegir…
+        3. Observar…
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado y resultado real
+      placeholder: Esperaba…; ocurrió…
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Entorno y verificaciones
+      description: Navegador/Node.js y salida de typecheck/tests/build si aplica.
+    validations:
+      required: false

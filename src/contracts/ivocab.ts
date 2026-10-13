@@ -100,8 +100,8 @@ export interface IVocab {
 
 /**
  * MAPEO PROPUESTO a los futuros `BrainInputs` (NO cableado: esto vive en el
- * contrato como documento hasta que se acuerde en el pad y se implemente en
- * `src/brain/`). Idea: por cada estímulo, la fuerza de input asociada a una
+ * contrato como documento hasta que se acuerde en una revisión de proyecto y
+ * se implemente en `src/brain/`). Idea: por cada estímulo, la fuerza de input asociada a una
  * palabra escuchada es la confianza de su entrada «aprendida»:
  *
  * ```
