@@ -2,7 +2,7 @@
  * Recompensa por reducción de drive (el refuerzo de Creatures, simplificado).
  *
  * En el original, el aprendizaje lo disparan los neuroemisores de recompensa
- * (químico 204) y castigo (205). Aquí no hay emisores ni mundo todavía, así que
+ * (químico 204) y castigo (205). Todavía no modelamos esos emisores dedicados;
  * la señal se deriva de la bioquímica observable: se define un MALESTAR
  * (0 = todo satisfecho, 1 = todo al peor nivel) como mezcla lineal de drives
  * aversivos y deseables, y la recompensa de un paso es la REDUCCIÓN de ese
@@ -11,11 +11,11 @@
  * Módulo puro: no conoce el cerebro ni el motor. Lo consume `main.ts` para
  * llamar a `BrainV05Adapter.reinforce()` y lo cubren `tests/reward.test.ts`.
  *
- * HONESTIDAD SOBRE EL ESTADO ACTUAL: sin objetos en el mundo (Fase 4), la
- * deriva de los drives es casi toda intrínseca, así que esta señal es débil y
- * poco contingente con la acción. El refuerzo accionable de la demo viene de
- * los botones premio/castigo; esta función existe para que, en cuanto haya
- * comida/juego/caricias, el aprendizaje por reducción de drive funcione solo.
+ * HONESTIDAD SOBRE EL ESTADO ACTUAL: `src/world/` ya produce efectos de comida,
+ * juego, luz y descanso, pero el mundo sigue siendo abstracto y las magnitudes
+ * no están calibradas. La señal puede ser contingente con el verbo, pero aún no
+ * valida una tarea de navegación/aprendizaje real. Los botones premio/castigo
+ * permiten supervisar decisiones mientras se completa el mundo espacial.
  */
 import type { DriveId, DriveState } from '../contracts/types';
 

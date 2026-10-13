@@ -1,8 +1,8 @@
 /**
  * Smoke test de la app: carga `index.html` en un DOM de prueba e importa
  * `src/main.ts` tal y como lo hace Vite. Verifica que los ids del HTML y del
- * runtime siguen casando, que el bucle pinta el panel del cerebro y que los
- * controles de premio/castigo y de vocabulario responden.
+ * runtime siguen casando, que cerebro/mundo aparecen y que los controles de
+ * prueba manual, premio/castigo y vocabulario responden.
  *
  * El canvas se sustituye por un contexto 2D de pega (Path2D incluido): aquí se
  * prueba el cableado, no el dibujo — de eso se ocupa `tests/visuals.test.ts`.
@@ -39,6 +39,7 @@ function fakeContext(): CanvasRenderingContext2D {
 
 let frameCallback: ((time: number) => void) | null = null;
 let frameId = 0;
+let frameTime = 0;
 
 beforeAll(async () => {
   class FakePath2D {
@@ -73,6 +74,7 @@ beforeAll(async () => {
   document.body.innerHTML = body.replace(/<script[\s\S]*?<\/script>/g, '');
 
   await import('../src/main');
+  frameTime = performance.now();
 });
 
 afterAll(() => {
@@ -81,12 +83,11 @@ afterAll(() => {
 
 /** Hace avanzar `frames` fotogramas con un dt de ~16,7 ms. */
 function runFrames(frames: number): void {
-  let time = performance.now();
   for (let i = 0; i < frames; i++) {
     const callback = frameCallback;
     if (!callback) throw new Error('El bucle de la app no pidió otro fotograma');
-    time += 16.7;
-    callback(time);
+    frameTime += 16.7;
+    callback(frameTime);
   }
 }
 
@@ -95,10 +96,12 @@ function text(id: string): string {
 }
 
 describe('app — arranque', () => {
-  it('pinta los 8 drives y las 5 acciones del codebook del cerebro', () => {
+  it('pinta los drives, las acciones del cerebro y los objetos del mundo', () => {
     runFrames(3);
     expect(document.querySelectorAll('#drive-grid .drive-card')).toHaveLength(8);
     expect(document.querySelectorAll('#brain-action-grid .brain-action-row')).toHaveLength(DEFAULT_ACTIONS.length);
+    expect(document.querySelectorAll('#world-grid .world-object')).toHaveLength(4);
+    expect(document.getElementById('world-action-form')).not.toBeNull();
     expect(text('brain-decision')).not.toBe('');
     expect(text('brain-epsilon-value')).toMatch(/^\d+%$/);
     expect(text('brain-stats')).toMatch(/^\d+ decisiones · \d+ refuerzos$/);
@@ -115,12 +118,12 @@ describe('app — arranque', () => {
   it('avanza la simulación: decisiones y refuerzos crecen con los fotogramas', () => {
     runFrames(2);
     const before = text('brain-stats');
-    runFrames(20);
+    runFrames(60);
     const after = text('brain-stats');
     const decisions = (value: string): number => Number(/^(\d+)/.exec(value)?.[1] ?? 0);
     const reinforcements = (value: string): number => Number(/(\d+) refuerzos$/.exec(value)?.[1] ?? 0);
     expect(decisions(after)).toBeGreaterThan(decisions(before));
-    // Con el refuerzo automático activo, casi cada fotograma refuerza.
+    // El refuerzo automático se aplica al cerrar cada intervalo de decisión.
     expect(reinforcements(after)).toBeGreaterThan(reinforcements(before));
   });
 });
@@ -133,8 +136,7 @@ describe('app — enseñanza manual', () => {
 
   it('premiar refuerza la última decisión y lo cuenta', () => {
     runFrames(2);
-    // El primer click fuerza un render fresco del contador (el panel se
-    // repinta cada 0,1 s de tiempo simulado, no en cada fotograma).
+    // Los controles manuales actualizan el contador inmediatamente.
     click('reward-button');
     const before = reinforcements(text('brain-stats'));
     click('reward-button');
@@ -162,8 +164,32 @@ describe('app — enseñanza manual', () => {
 
     toggle.checked = true;
     toggle.dispatchEvent(new window.Event('change'));
-    runFrames(12);
+    runFrames(60);
     expect(reinforcements(text('brain-stats'))).toBeGreaterThan(before);
+  });
+
+  it('probar un verbo activa un objeto sin acreditar esa prueba al cerebro', () => {
+    const form = document.getElementById('world-action-form');
+    const select = document.getElementById('world-action-select');
+    if (!(form instanceof HTMLFormElement) || !(select instanceof HTMLSelectElement)) {
+      throw new Error('Falta el formulario de prueba del mundo');
+    }
+    select.value = 'descansar';
+    const before = text('brain-stats');
+    form.dispatchEvent(new window.Event('submit', { cancelable: true, bubbles: true }));
+    expect(text('world-feedback')).toMatch(/^Prueba manual:/);
+    expect(text('world-action')).toMatch(/^Prueba manual · Descansar/);
+    expect(text('world-feedback')).toMatch(/No se enseña al cerebro/);
+    expect(text('brain-stats')).toBe(before);
+
+    const decisionsBefore = Number(/^(\d+)/.exec(before)?.[1] ?? 0);
+    const reinforcementsBefore = reinforcements(before);
+    for (let frame = 0; frame < 60 && Number(/^(\d+)/.exec(text('brain-stats'))?.[1] ?? 0) === decisionsBefore; frame++) {
+      runFrames(1);
+    }
+    const afterDecision = text('brain-stats');
+    expect(Number(/^(\d+)/.exec(afterDecision)?.[1] ?? 0)).toBeGreaterThan(decisionsBefore);
+    expect(reinforcements(afterDecision)).toBe(reinforcementsBefore);
   });
 
   it('enseñar una palabra sigue funcionando junto al cerebro', () => {

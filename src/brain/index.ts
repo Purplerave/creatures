@@ -1,7 +1,6 @@
 /**
- * Superficie pública del módulo cerebro (D2) — punto de importación único
- * para consumidores externos (p. ej. `src/render/brain-view.ts`, tarea L2 de
- * lmarena), para que no tengan que importar internos fichero a fichero.
+ * Superficie pública del módulo cerebro (D2): punto de importación único
+ * para consumidores que no deben depender de los ficheros internos.
  *
  * No se re-exporta `stub.ts` (histórico de Fase 0, no forma parte de la
  * superficie actual).

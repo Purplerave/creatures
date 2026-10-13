@@ -7,8 +7,8 @@
  * clase con estos métodos y shapes encaja sin `implements` (TS structural
  * typing).
  *
- * Mientras no haya una implementación real conectada, se usa
- * `src/brain/placeholder-brain.ts`, que satisface esta misma interfaz.
+ * `BrainV05` (`src/brain/brain-v05.ts`) implementa esta superficie en la app;
+ * `src/brain/placeholder-brain.ts` se conserva como doble para tests/regresión.
  */
 
 /** Entrada que espera `brain-v05`: tres vectores ya normalizados. */
@@ -25,17 +25,18 @@ export interface BrainV05Input {
 export interface BrainV05Result {
   /** Acción elegida (escalar crudo; ver mapeo en src/brain/adapter.ts). */
   action: number;
-  /** Nombre legible de la acción (p. ej. «comer»). */
+  /** Nombre legible de la acción (p. ej. «buscar»). */
   actionName: string;
   /** Confianza de la decisión, 0..1. */
   confidence: number;
-  /** true si la acción salió de la exploración ε, no delargmax. */
+  /** true si la acción salió de la exploración ε, no del argmax. */
   explored: boolean;
 }
 
 /**
- * Estado de depuración del cerebro (D2) para la vista de depuración L2
- * (`src/render/brain-view.ts`, tarea de lmarena).
+ * Estado normalizado de depuración del cerebro (D2). Puede consumirse desde
+ * una vista de debug; el repo actual tiene el panel de actividad en `main.ts`,
+ * pero aún no incluye un módulo de visualización L2 independiente.
  *
  * ⚠️ EXCEPCIÓN AUTORIZADA Y ACOTADA a la regla del cerebro encapsulado: la
  * CEO pidió exponer estos campos concretos para la vista de depuración. Es
@@ -43,10 +44,10 @@ export interface BrainV05Result {
  * arquitectura ni ε; solo lo listado abajo. Añadir más campos requiere nueva
  * autorización.
  *
- * Mientras no haya un MLP real en el repositorio (`tecnotron/brain-v05`
- * sigue sin subirse y solo existe `PlaceholderBrain`), los arrays internos
- * (`hiddenActivations`, `outputWeights`) vienen VACÍOS: no se inventan pesos
- * ni activaciones falsas.
+ * El puerto D2 del adaptador conserva este shape compatible. `BrainV05` sí es
+ * un MLP real, pero su interfaz estructural de debug usa scores/probabilidades
+ * (`BrainV05DebugState`); el adaptador deja `hiddenActivations` y `outputWeights`
+ * vacíos porque no debe filtrar esos internals.
  */
 export interface BrainDebugState {
   /** Acción elegida en el último `think()`; 0 si aún no ha habido ninguno. */
@@ -61,12 +62,12 @@ export interface BrainDebugState {
   hasThink: boolean;
   /**
    * Activaciones de la capa oculta, en orden de neurona.
-   * `[]` = el cerebro conectado no las expone aún (ver cabecera y §Debug).
+   * `[]` = el adaptador no filtra internals del MLP (ver cabecera y §Debug).
    */
   hiddenActivations: number[];
   /**
    * Pesos de la capa de salida (plano, fila a fila).
-   * `[]` = el cerebro conectado no los expone aún (ver cabecera y §Debug).
+   * `[]` = el adaptador no filtra internals del MLP (ver cabecera y §Debug).
    */
   outputWeights: number[];
   /**

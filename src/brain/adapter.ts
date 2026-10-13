@@ -144,7 +144,8 @@ export class BrainV05Adapter implements IBrain {
 
   /**
    * Puerto de depuración D2 (excepción autorizada, ver cabecera): estado
-   * para `src/render/brain-view.ts` (tarea L2 de lmarena).
+   * normalizado para consumidores de una vista L2; ese módulo de render no está
+   * incluido en este repo.
    *
    * - `action`/`actionName`/`confidence`/`explored`/`genomeInputs` salen
    *   SIEMPRE del último `think()` real del adaptador (o de la forma neutra
@@ -152,7 +153,7 @@ export class BrainV05Adapter implements IBrain {
    * - `hiddenActivations`/`outputWeights` los aporta el cerebro subyacente
    *   SOLO si su debug los expone (hoy `BrainV05` real no los incluye: su
    *   `BrainV05DebugState` trae scores/probabilities/lastDecision → siguen
-   *   `[]` hasta que la dueña del cerebro amplíe su debug); no se inventan.
+   *   `[]`; el adaptador no filtra internals del MLP y no se inventan.
    */
   getDebugState(): BrainDebugState {
     const last = this.lastThink;

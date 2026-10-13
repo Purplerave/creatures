@@ -13,7 +13,7 @@
  * Extensibilidad: lee los registros de driveTable.ts y chemicals.ts al
  * construirse (snapshot). Regístralos ANTES de instanciar el motor.
  */
-import type { ChemicalId, DriveId, DriveState, TickResult } from '../contracts/types';
+import type { BiochemicalImpulse, ChemicalId, DriveId, DriveState, TickResult } from '../contracts/types';
 import type { IBiochem } from '../contracts/ibiochem';
 import type { PhenotypeConfig } from '../contracts/igenome';
 import { listDriveDefs, type DriveDef } from './driveTable';
@@ -95,6 +95,55 @@ export class BiochemEngine implements IBiochem {
     const slot = this.driveSlots.get(id);
     if (!slot) throw new RangeError(`Drive no registrado: ${id}`);
     return slot.def;
+  }
+
+  /**
+   * Aplica el efecto de un evento externo sin saltarse la autoridad del motor.
+   * Primero valida y calcula todo el lote; ningún estado cambia si falla un id
+   * o valor. Los impulsos se suman al nivel vivo y al target del drive.
+   */
+  applyImpulse(impulse: BiochemicalImpulse): void {
+    if (typeof impulse !== 'object' || impulse === null || Array.isArray(impulse)) {
+      throw new RangeError('El impulso bioquímico debe ser un objeto');
+    }
+    if (
+      (impulse.drives !== undefined && (typeof impulse.drives !== 'object' || impulse.drives === null || Array.isArray(impulse.drives))) ||
+      (impulse.chemicals !== undefined &&
+        (typeof impulse.chemicals !== 'object' || impulse.chemicals === null || Array.isArray(impulse.chemicals)))
+    ) {
+      throw new RangeError('Los impulsos de drives y químicos deben ser mapas');
+    }
+
+    const driveChanges: Array<{ slot: DriveSlot; level: number; target: number }> = [];
+    for (const [id, delta] of Object.entries(impulse.drives ?? {})) {
+      if (typeof delta !== 'number' || !Number.isFinite(delta)) {
+        throw new RangeError(`Impulso no finito para drive ${id}: ${String(delta)}`);
+      }
+      const slot = this.driveSlots.get(id);
+      if (!slot) throw new RangeError(`Drive no registrado: ${id}`);
+      const [min, max] = slot.def.clamp;
+      driveChanges.push({
+        slot,
+        level: clamp01(slot.level + delta, min, max),
+        target: clamp01(slot.target + delta, min, max),
+      });
+    }
+
+    const chemicalChanges: Array<{ id: ChemicalId; level: number }> = [];
+    for (const [id, delta] of Object.entries(impulse.chemicals ?? {})) {
+      if (typeof delta !== 'number' || !Number.isFinite(delta)) {
+        throw new RangeError(`Impulso no finito para químico ${id}: ${String(delta)}`);
+      }
+      const current = this.chemLevels.get(id);
+      if (current === undefined) throw new RangeError(`Químico no registrado: ${id}`);
+      chemicalChanges.push({ id, level: clamp01(current + delta, 0, 1) });
+    }
+
+    for (const change of driveChanges) {
+      change.slot.level = change.level;
+      change.slot.target = change.target;
+    }
+    for (const change of chemicalChanges) this.chemLevels.set(change.id, change.level);
   }
 
   tick(dtSeconds: number): TickResult {

@@ -1,8 +1,8 @@
 /**
  * Contrato del cerebro.
- * `BrainV05Adapter` lo implementa y encapsula una implementación enchufable;
- * la composición actual usa `PlaceholderBrain` hasta disponer del modelo real.
- * La bioquímica no conoce el algoritmo concreto.
+ * `BrainV05Adapter` lo implementa y encapsula una implementación enchufable.
+ * La app compone `BrainV05` real detrás del adaptador; `PlaceholderBrain` se
+ * conserva para pruebas/regresión. La bioquímica no conoce el algoritmo concreto.
  */
 import type { ChemicalId, DriveId, DriveState } from './types';
 

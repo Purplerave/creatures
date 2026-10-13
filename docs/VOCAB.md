@@ -158,8 +158,8 @@ lanza `RangeError` y la instancia queda como estaba (test `vocab-serialize`).
 ## Mapeo al cerebro (propuesta)
 
 **No cableado a propósito.** El contrato documenta la idea en
-`src/contracts/ivocab.ts` (bloque `MAPEO PROPUESTO`) y debe acordarse en el
-pad antes de tocar `src/brain/`:
+`src/contracts/ivocab.ts` (bloque `MAPEO PROPUESTO`) y debe acordarse en una
+revisión del proyecto (coordinada por GitHub) antes de tocar `src/brain/`:
 
 ```
 input(palabra) = entrada(word, stimulusId).learned
