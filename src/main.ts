@@ -49,6 +49,7 @@ const brainCanvas = document.getElementById('brain-canvas');
 const creatureNameHeading = document.getElementById('creature-name');
 const creatureSubtitle = document.getElementById('creature-subtitle');
 const moodBadge = document.getElementById('mood');
+const needStatus = document.getElementById('need-status');
 const driveGrid = document.getElementById('drive-grid');
 const chemStrip = document.getElementById('chem-strip');
 const teachForm = document.getElementById('teach-form');
@@ -542,6 +543,22 @@ function renderSnapshot(snapshot: TickResult): void {
       speech: speechText,
     },
   };
+  const actionableNeeds = [
+    { id: 'hambre' as DriveId, urgency: state.drives.hambre?.level ?? 0, label: 'buscar comida' },
+    { id: 'sueno' as DriveId, urgency: state.drives.sueno?.level ?? 0, label: 'descansar' },
+    { id: 'aburrimiento' as DriveId, urgency: state.drives.aburrimiento?.level ?? 0, label: 'jugar o explorar' },
+    { id: 'miedo' as DriveId, urgency: state.drives.miedo?.level ?? 0, label: 'sentirse a salvo' },
+    { id: 'energia' as DriveId, urgency: 1 - (state.drives.energia?.level ?? 1), label: 'recuperar energía' },
+    { id: 'confort' as DriveId, urgency: 1 - (state.drives.confort?.level ?? 1), label: 'estar cómodo' },
+  ];
+  const primaryNeed = actionableNeeds.reduce((best, need) => need.urgency > best.urgency ? need : best);
+  if (needStatus) {
+    needStatus.textContent =
+      primaryNeed.urgency < 0.18 ? 'Necesidades tranquilas' : `Ahora: ${primaryNeed.label}`;
+    needStatus.setAttribute('aria-label', `Necesidad principal: ${primaryNeed.label}`);
+    needStatus.setAttribute('title', `Urgencia aproximada: ${Math.round(primaryNeed.urgency * 100)} %`);
+  }
+
   const mood = deriveMood(state.drives);
   visuals.render(state);
   moodBadgeElement.dataset.mood = mood;
