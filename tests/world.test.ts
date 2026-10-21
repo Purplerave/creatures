@@ -9,6 +9,10 @@ const EXPECTED_OBJECTS: Record<WorldActionId, string> = {
   observar: 'luz-suave',
   explorar: 'pelota',
   buscar: 'comedero',
+  atravesar: 'tunel',
+  mirar: 'ventana',
+  tocar: 'xilofono',
+  abrazar: 'peluche',
 };
 
 describe('mundo por eventos', () => {
@@ -34,6 +38,25 @@ describe('mundo por eventos', () => {
 
     world.advance(1);
     expect(world.performAction('explorar').applied).toBe(true);
+  });
+
+  it('migra el esquema v2 y conserva los objetos añadidos con estado inicial', () => {
+    const source = new CreatureWorld();
+    source.performAction('buscar');
+    const legacy = JSON.parse(source.serialize()) as { schemaVersion: number; objects: Record<string, unknown> };
+    legacy.schemaVersion = 2;
+    delete legacy.objects.tunel;
+    delete legacy.objects.ventana;
+    delete legacy.objects.xilofono;
+    delete legacy.objects.peluche;
+
+    const restored = new CreatureWorld();
+    restored.deserialize(JSON.stringify(legacy));
+    const snapshot = restored.getSnapshot();
+    expect(snapshot.objects.find((object) => object.id === 'comedero')?.uses).toBe(1);
+    for (const id of ['tunel', 'ventana', 'xilofono', 'peluche']) {
+      expect(snapshot.objects.find((object) => object.id === id)).toMatchObject({ uses: 0, cooldownRemaining: 0 });
+    }
   });
 
   it('aplica la recompensa por reducción de malestar a una interacción real', () => {
