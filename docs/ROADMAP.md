@@ -12,13 +12,15 @@ El vocabulario actual es asociativo y expresivo; permanece desacoplado de las en
 
 ## Prioridades
 
-### P0 — Hacer legible el bucle de juego
+### P0 — Completar la legibilidad del bucle de juego
+
+**Estado:** el hábitat ahora conserva las ocho decisiones, resultados y refuerzos más recientes, con origen temporal y una distinción explícita entre las acciones manuales y las de Nilo. Falta validar la comprensión con personas que no conocen el proyecto.
 
 **Resultado:** una persona que abre la demo entiende qué necesita Nilo, qué eligió hacer y qué consecuencia tuvo.
 
 - Presentar de forma clara el estado de Nilo y su necesidad más urgente.
-- Diferenciar acciones autónomas, órdenes por clic, pruebas manuales y refuerzos.
-- Registrar la cadena percepción → decisión → acción → consecuencia → recompensa.
+- Diferenciar visualmente necesidades, acciones autónomas, órdenes por clic, pruebas manuales y refuerzos.
+- Completar el registro de la cadena percepción → decisión → acción → consecuencia → recompensa, incluida la consecuencia de acciones que requieren desplazamiento.
 - Mantener un flujo guiado de cinco minutos que no exija conocimientos del panel técnico.
 
 **Aceptación:** al menos 4 de 5 personas que prueben la demo sin explicación identifican una necesidad, dejan actuar a Nilo y describen correctamente el resultado de una interacción.
