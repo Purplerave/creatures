@@ -89,6 +89,7 @@ const exportJsonButton = document.getElementById('export-json-button');
 const importJsonInput = document.getElementById('import-json-input');
 const resetGameButton = document.getElementById('reset-game-button');
 const speedButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.speed-btn'));
+const autonomyToggle = document.getElementById('autonomy-toggle');
 
 if (!(canvas instanceof HTMLCanvasElement)) throw new Error('Falta el canvas #app');
 if (!moodBadge) throw new Error('Falta el indicador de estado #mood');
@@ -116,6 +117,7 @@ if (!(autoRewardToggle instanceof HTMLInputElement)) throw new Error('Falta el i
 if (!worldGrid || !worldAction || !worldFeedback) throw new Error('Falta el panel del mundo');
 if (!(worldActionForm instanceof HTMLFormElement)) throw new Error('Falta el formulario de prueba del mundo');
 if (!(worldActionSelect instanceof HTMLSelectElement)) throw new Error('Falta el selector de acciones del mundo');
+if (!(autonomyToggle instanceof HTMLInputElement)) throw new Error('Falta el interruptor #autonomy-toggle');
 
 const habitatCanvas = canvas;
 const moodBadgeElement = moodBadge;
@@ -137,6 +139,7 @@ const worldActionElement = worldAction;
 const worldFeedbackElement = worldFeedback;
 const worldActionFormElement = worldActionForm;
 const worldActionSelectElement = worldActionSelect;
+const autonomyToggleElement = autonomyToggle;
 const rewardButtonElement = rewardButton;
 const punishButtonElement = punishButton;
 
@@ -313,8 +316,6 @@ for (const object of world.getSnapshot().objects) {
   const card = document.createElement('article');
   card.className = 'world-object';
   card.dataset.objectId = object.id;
-  card.setAttribute('role', 'button');
-  card.tabIndex = 0;
   card.setAttribute('aria-label', `${object.name}: ${object.description}`);
 
   const heading = document.createElement('div');
@@ -338,9 +339,16 @@ for (const object of world.getSnapshot().objects) {
   description.className = 'world-object-description';
   description.textContent = object.description;
 
-  const action = document.createElement('p');
+  const action = document.createElement('div');
   action.className = 'world-object-actions';
-  action.textContent = object.actions.join(' · ');
+  for (const verb of object.actions) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'world-object-action-button';
+    button.textContent = actionSpace.find((item) => item.id === verb)?.name ?? verb;
+    button.addEventListener('click', () => performWorldAction(verb, 'manual'));
+    action.append(button);
+  }
 
   const state = document.createElement('div');
   state.className = 'world-object-state';
@@ -353,16 +361,7 @@ for (const object of world.getSnapshot().objects) {
   state.append(status, uses);
 
   card.append(heading, description, action, state);
-  const activatePrimaryAction = (): void => {
-    const primaryVerb = object.actions[0];
-    if (primaryVerb) performWorldAction(primaryVerb, 'manual');
-  };
-  card.addEventListener('click', activatePrimaryAction);
-  card.addEventListener('keydown', (event) => {
-    if (event.repeat || (event.key !== 'Enter' && event.key !== ' ')) return;
-    event.preventDefault();
-    activatePrimaryAction();
-  });
+  
   worldGridElement.append(card);
   worldObjectReadouts.set(object.id, { card, zone, status, uses });
 }
@@ -392,7 +391,8 @@ let animationFrame = 0;
 let previousDiscomfort = 0;
 let suppressNextAutoReward = false;
 let autoReward = autoRewardElement.checked;
-let spatialStrict = spatialStrictToggle instanceof HTMLInputElement ? spatialStrictToggle.checked : false;
+let spatialStrict = spatialStrictToggle instanceof HTMLInputElement ? spatialStrictToggle.checked : true;
+let autonomousMode = autonomyToggleElement.checked;
 let lastWorldSource: 'brain' | 'manual' = 'brain';
 let activeSpeech = '';
 let speechExpiresAt = 0;
@@ -528,6 +528,7 @@ function renderSnapshot(snapshot: TickResult): void {
       creatureVelocity: worldSnap.creature.velocity,
       heading: worldSnap.creature.heading,
       targetObjectId: worldSnap.creature.targetObjectId,
+      targetPosition: worldSnap.creature.targetPosition,
       activeObjectId: worldSnap.lastInteraction?.applied ? worldSnap.lastInteraction.objectId : null,
       objects: worldSnap.objects.map((item) => ({
         id: item.id,
@@ -805,6 +806,18 @@ function onAutoRewardChange(): void {
     : 'Refuerzo automático desactivado: solo cuentan los premios y castigos manuales.';
 }
 
+function onAutonomyChange(): void {
+  autonomousMode = autonomyToggleElement.checked;
+  if (!autonomousMode) {
+    const position = world.getSnapshot().creature.position;
+    world.moveCreatureTo(position);
+    worldFeedbackElement.textContent = 'Modo guiado: Nilo se moverá cuando tú se lo indiques.';
+  } else {
+    worldFeedbackElement.textContent = 'Modo autónomo: el cerebro decide las acciones de Nilo.';
+  }
+  renderWorld();
+}
+
 function onSpatialStrictChange(): void {
   if (!(spatialStrictToggle instanceof HTMLInputElement)) return;
   spatialStrict = spatialStrictToggle.checked;
@@ -1068,6 +1081,7 @@ rewardButtonElement.addEventListener('click', onRewardClick);
 punishButtonElement.addEventListener('click', onPunishClick);
 autoRewardElement.addEventListener('change', onAutoRewardChange);
 spatialStrictToggle?.addEventListener('change', onSpatialStrictChange);
+autonomyToggleElement.addEventListener('change', onAutonomyChange);
 mutateGenomeButton?.addEventListener('click', onMutateGenomeClick);
 hatchOffspringButton?.addEventListener('click', onHatchOffspringClick);
 saveGameButton?.addEventListener('click', onSaveGameClick);
@@ -1088,7 +1102,8 @@ let lastSnapshot = initialSnapshot;
 previousDiscomfort = driveDiscomfort(initialSnapshot.drives);
 lastBrainOutput = brain.think(brainInputs(initialSnapshot, frame));
 const initialAction = actionFromValue(actionSpace, lastBrainOutput.actions[0] ?? 0);
-if (initialAction) performWorldAction(initialAction.action.id, 'brain');
+// La primera decisión se muestra, pero el modo inicial es guiado: no se ejecuta sola.
+void initialAction;
 renderSnapshot(initialSnapshot);
 renderBrain();
 renderWorld();
@@ -1144,7 +1159,7 @@ function loop(now: number): void {
     if (simTime >= nextBrainDecision) {
       const skipReward = suppressNextAutoReward;
       suppressNextAutoReward = false;
-      if (autoReward && !skipReward) {
+      if (autoReward && autonomousMode && !skipReward) {
         const reward = driveReductionReward(previousDiscomfort, discomfort);
         brain.reinforce(reward);
         if (Math.abs(reward) >= 0.01) {
@@ -1154,8 +1169,10 @@ function loop(now: number): void {
       previousDiscomfort = discomfort;
 
       lastBrainOutput = brain.think(brainInputs(snapshot, frame));
-      const selected = actionFromValue(actionSpace, lastBrainOutput.actions[0] ?? 0);
-      if (selected) performWorldAction(selected.action.id, 'brain');
+      if (autonomousMode) {
+        const selected = actionFromValue(actionSpace, lastBrainOutput.actions[0] ?? 0);
+        if (selected) performWorldAction(selected.action.id, 'brain');
+      }
       renderBrain();
       nextBrainDecision = simTime + BRAIN_DECISION_INTERVAL;
     }
@@ -1190,6 +1207,7 @@ function cleanup(): void {
   punishButtonElement.removeEventListener('click', onPunishClick);
   autoRewardElement.removeEventListener('change', onAutoRewardChange);
   spatialStrictToggle?.removeEventListener('change', onSpatialStrictChange);
+  autonomyToggleElement.removeEventListener('change', onAutonomyChange);
   mutateGenomeButton?.removeEventListener('click', onMutateGenomeClick);
   hatchOffspringButton?.removeEventListener('click', onHatchOffspringClick);
   saveGameButton?.removeEventListener('click', onSaveGameClick);
