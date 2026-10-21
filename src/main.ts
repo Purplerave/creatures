@@ -746,9 +746,7 @@ function performWorldAction(actionId: string, source: 'brain' | 'manual'): void 
   }
 
   const prefix = source === 'manual' ? 'Prueba manual' : 'Acción del cerebro';
-  const note = source === 'manual' && interaction.applied
-    ? ' No se enseña al cerebro con esta prueba.'
-    : '';
+  const note = source === 'manual' ? ' No se enseña al cerebro con esta prueba.' : '';
   worldFeedbackElement.textContent = `${prefix}: ${interaction.message}${note}`;
   recordActivity(source === 'manual' ? 'Prueba manual' : 'Decisión de Nilo', interaction.message);
   renderWorld();
@@ -1147,7 +1145,8 @@ function loop(now: number): void {
         }
       }
       const prefix = interactionSource === 'manual' ? 'Prueba manual' : 'Acción del cerebro';
-      worldFeedbackElement.textContent = `${prefix}: ${interaction.message}`;
+      const note = interactionSource === 'manual' ? ' No se enseña al cerebro con esta prueba.' : '';
+      worldFeedbackElement.textContent = `${prefix}: ${interaction.message}${note}`;
       recordActivity(interactionSource === 'manual' ? 'Resultado manual' : 'Resultado', interaction.message);
     }
 
