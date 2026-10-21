@@ -1,10 +1,6 @@
 # Creatures — estado del proyecto
 
-**Actualizado:** 21-oct-2026 · **Repo:** https://github.com/Purplerave/creatures · **Base estable:** `main` (`215ad16`, PR #6 fusionada) · **Mejoras en revisión:** [PR #7](https://github.com/Purplerave/creatures/pull/7), rama `codex/product-roadmap-audit`.
-
-## Propuesta pendiente de integración
-
-La PR #7 reúne mejoras de estabilidad temporal, persistencia, accesibilidad, feedback del hábitat, documentación y atajos de teclado. Su último CI (commit `04c61e1`) pasó; los cambios aún no forman parte de `main` hasta completar revisión y fusión.
+**Actualizado:** 21-oct-2026 · **Repo:** https://github.com/Purplerave/creatures · **Base estable:** `main` (`04c61e1`, PR #6 y PR #7 fusionadas).
 
 ## Nota sobre historial reciente de `main`
 
