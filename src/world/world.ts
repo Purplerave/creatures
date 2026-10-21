@@ -17,7 +17,7 @@
 import type { BiochemicalImpulse } from '../contracts/types';
 
 /** Versión del esquema de serialización del mundo (Fase 5). */
-export const WORLD_SCHEMA_VERSION = 2;
+export const WORLD_SCHEMA_VERSION = 3;
 
 /** Velocidad base de desplazamiento en unidades normalizadas de hábitat por segundo. */
 export const DEFAULT_WALK_SPEED = 0.78;
@@ -25,8 +25,8 @@ export const DEFAULT_WALK_SPEED = 0.78;
 /** Posición inicial de Nilo en el centro del suelo del hábitat. */
 export const INITIAL_CREATURE_POSITION = { x: 0.5, y: 0.66 } as const;
 
-export type WorldActionId = 'descansar' | 'acurrucarse' | 'observar' | 'explorar' | 'buscar';
-export type WorldObjectId = 'nido' | 'comedero' | 'pelota' | 'luz-suave';
+export type WorldActionId = 'descansar' | 'acurrucarse' | 'observar' | 'explorar' | 'buscar' | 'atravesar' | 'mirar' | 'tocar' | 'abrazar';
+export type WorldObjectId = 'nido' | 'comedero' | 'pelota' | 'luz-suave' | 'tunel' | 'ventana' | 'xilofono' | 'peluche';
 
 /** Coordenada 2D normalizada en el escenario del hábitat (`0..1`). */
 export interface Vec2 {
@@ -133,7 +133,7 @@ export const WORLD_OBJECTS: readonly WorldObjectDefinition[] = [
     name: 'Nido mullido',
     icon: '🪺',
     description: 'Descansar recupera energía; acurrucarse da confort y vínculo.',
-    zoneLabel: 'Oeste · rincón cálido',
+    zoneLabel: 'Zona de descanso · Oeste',
     position: { x: 0.16, y: 0.69 },
     interactionRadius: 0.11,
     actions: ['descansar', 'acurrucarse'],
@@ -144,7 +144,7 @@ export const WORLD_OBJECTS: readonly WorldObjectDefinition[] = [
     name: 'Comedero',
     icon: '🍎',
     description: 'Buscar estímulo permite comer y reponer glucosa.',
-    zoneLabel: 'Este · dispensador',
+    zoneLabel: 'Zona de comida · Este',
     position: { x: 0.84, y: 0.69 },
     interactionRadius: 0.11,
     actions: ['buscar'],
@@ -155,7 +155,7 @@ export const WORLD_OBJECTS: readonly WorldObjectDefinition[] = [
     name: 'Pelota',
     icon: '⚽',
     description: 'Explorar la pelota alivia el aburrimiento y libera dopamina.',
-    zoneLabel: 'Centro-sur · alfombra',
+    zoneLabel: 'Zona de juego · Centro',
     position: { x: 0.36, y: 0.78 },
     interactionRadius: 0.11,
     actions: ['explorar'],
@@ -166,11 +166,35 @@ export const WORLD_OBJECTS: readonly WorldObjectDefinition[] = [
     name: 'Luz suave',
     icon: '💡',
     description: 'Observar la luz estimula la curiosidad y calma el miedo.',
-    zoneLabel: 'Noreste · lámpara suave',
+    zoneLabel: 'Zona tranquila · Este',
     position: { x: 0.66, y: 0.45 },
     interactionRadius: 0.12,
     actions: ['observar'],
     cooldownSeconds: 0.75,
+  },
+  {
+    id: 'tunel', name: 'Túnel de tela', icon: '🕳️',
+    description: 'Atravesar el túnel consume energía y reduce el aburrimiento.',
+    zoneLabel: 'Zona de juego · Centro', position: { x: 0.49, y: 0.74 },
+    interactionRadius: 0.12, actions: ['atravesar'], cooldownSeconds: 1.2,
+  },
+  {
+    id: 'ventana', name: 'Ventana al jardín', icon: '🪟',
+    description: 'Mirar el jardín despierta la curiosidad y calma a Nilo.',
+    zoneLabel: 'Zona tranquila · Este', position: { x: 0.9, y: 0.42 },
+    interactionRadius: 0.12, actions: ['mirar'], cooldownSeconds: 0.9,
+  },
+  {
+    id: 'xilofono', name: 'Xilófono de madera', icon: '🎵',
+    description: 'Tocar una melodía estimula la curiosidad y el bienestar.',
+    zoneLabel: 'Zona de juego · Centro', position: { x: 0.58, y: 0.79 },
+    interactionRadius: 0.12, actions: ['tocar'], cooldownSeconds: 1,
+  },
+  {
+    id: 'peluche', name: 'Peluche compañero', icon: '🧸',
+    description: 'Abrazar al peluche da confort, vínculo y seguridad.',
+    zoneLabel: 'Zona de descanso · Oeste', position: { x: 0.25, y: 0.5 },
+    interactionRadius: 0.12, actions: ['abrazar'], cooldownSeconds: 0.8,
   },
 ] as const;
 
@@ -225,6 +249,38 @@ const INTERACTIONS: Record<WorldActionId, InteractionDefinition> = {
       chemicals: { glucosa: 0.12, dopamina: 0.025 },
     },
   },
+  atravesar: {
+    objectId: 'tunel',
+    message: 'Nilo atraviesa el túnel: juega, descubre el otro lado y gasta un poco de energía.',
+    impulse: { drives: { aburrimiento: -0.055, curiosidad: 0.035, energia: -0.025 }, chemicals: { dopamina: 0.045 } },
+  },
+  mirar: {
+    objectId: 'ventana',
+    message: 'Nilo mira el jardín: aumenta su curiosidad y baja el miedo.',
+    impulse: { drives: { curiosidad: 0.045, miedo: -0.03, aburrimiento: -0.02 }, chemicals: { serotonina: 0.035 } },
+  },
+  tocar: {
+    objectId: 'xilofono',
+    message: 'Nilo toca el xilófono: descubre sonidos y se anima.',
+    impulse: { drives: { curiosidad: 0.035, aburrimiento: -0.035, confort: 0.015 }, chemicals: { dopamina: 0.045 } },
+  },
+  abrazar: {
+    objectId: 'peluche',
+    message: 'Nilo abraza a su peluche: gana confort y vínculo, y se siente seguro.',
+    impulse: { drives: { miedo: -0.045, confort: 0.04, vinculo: 0.035 }, chemicals: { oxitocina: 0.05 } },
+  },
+};
+
+export const WORLD_ACTION_LABELS: Record<WorldActionId, string> = {
+  descansar: 'Descansar',
+  acurrucarse: 'Acurrucarse',
+  observar: 'Observar la luz',
+  explorar: 'Jugar con la pelota',
+  buscar: 'Buscar comida',
+  atravesar: 'Atravesar el túnel',
+  mirar: 'Mirar el jardín',
+  tocar: 'Tocar el xilófono',
+  abrazar: 'Abrazar el peluche',
 };
 
 interface MutableObjectState {
@@ -543,9 +599,9 @@ export class CreatureWorld {
       throw new RangeError('Mundo serializado debe ser un objeto JSON');
     }
     const candidate = parsed as Partial<SerializedWorldState>;
-    if (candidate.schemaVersion !== 1 && candidate.schemaVersion !== WORLD_SCHEMA_VERSION) {
+    if (candidate.schemaVersion !== 1 && candidate.schemaVersion !== 2 && candidate.schemaVersion !== WORLD_SCHEMA_VERSION) {
       throw new RangeError(
-        `schemaVersion de mundo no soportada: ${String(candidate.schemaVersion)} (soportadas: 1 y ${WORLD_SCHEMA_VERSION})`,
+        `schemaVersion de mundo no soportada: ${String(candidate.schemaVersion)} (soportadas: 1, 2 y ${WORLD_SCHEMA_VERSION})`,
       );
     }
     if (typeof candidate.objects !== 'object' || candidate.objects === null) {
@@ -556,6 +612,10 @@ export class CreatureWorld {
     for (const def of WORLD_OBJECTS) {
       const raw = candidate.objects[def.id];
       if (!raw || typeof raw !== 'object') {
+        if ((candidate.schemaVersion ?? 0) < WORLD_SCHEMA_VERSION) {
+          nextStates.set(def.id, { cooldownRemaining: 0, uses: 0 });
+          continue;
+        }
         throw new RangeError(`Falta el estado serializado del objeto ${def.id}`);
       }
       if (typeof raw.cooldownRemaining !== 'number' || !Number.isFinite(raw.cooldownRemaining) || raw.cooldownRemaining < 0) {
@@ -595,8 +655,8 @@ export class CreatureWorld {
       this.validateActionId(rawCreature.pendingActionId);
     }
     const rawManualTarget = rawCreature.manualTargetPosition;
-    if (candidate.schemaVersion === WORLD_SCHEMA_VERSION && !Object.hasOwn(rawCreature, 'manualTargetPosition')) {
-      throw new RangeError('manualTargetPosition ausente en mundo schema v2');
+    if ((candidate.schemaVersion ?? 0) >= 2 && !Object.hasOwn(rawCreature, 'manualTargetPosition')) {
+      throw new RangeError('manualTargetPosition ausente en mundo schema v2+');
     }
     if (rawManualTarget !== undefined && rawManualTarget !== null) {
       if (
