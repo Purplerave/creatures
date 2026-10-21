@@ -4,39 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#eaf1ed" />
-    <title>Creatures — Nilo, cerebro L2, mundo espacial y genoma vivo</title>
+    <title>Nilo — cuida y explora su hábitat</title>
     <style>
       :root {
-        color-scheme: light dark;
-        --page: #edf3ef;
-        --surface: #fbfdfb;
-        --surface-soft: #e3ece7;
-        --ink: #14221f;
-        --muted: #53635f;
-        --line: #c4d2cc;
-        --teal: #087f78;
-        --teal-dark: #075f5a;
-        --amber: #e8a53b;
-        --coral: #df6d52;
-        --shadow: 0 20px 55px rgba(22, 54, 47, 0.13);
-        --room: radial-gradient(circle at 52% 40%, #f1faf4 0 14%, #d6e6dd 54%, #b9cec4 100%);
-      }
-
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --page: #0c1514;
-          --surface: #121f1d;
-          --surface-soft: #192a27;
-          --ink: #edf6f3;
-          --muted: #a9bbb6;
-          --line: #34504a;
-          --teal: #4ac6b9;
-          --teal-dark: #76dacd;
-          --amber: #f0b951;
-          --coral: #f08065;
-          --shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
-          --room: radial-gradient(circle at 52% 40%, #1d322e 0 14%, #142521 54%, #0d1917 100%);
-        }
+        color-scheme: light;
+        --page: #f5f1e8;
+        --surface: #fffdf8;
+        --surface-soft: #eee8dc;
+        --ink: #302c27;
+        --muted: #71685f;
+        --line: #d9cfbf;
+        --teal: #43836f;
+        --teal-dark: #326652;
+        --amber: #d99b3d;
+        --coral: #d77762;
+        --shadow: 0 18px 48px rgba(78, 65, 48, 0.13);
+        --room: linear-gradient(180deg, #f5f4e9 0%, #e5eddc 56%, #d4e6d4 100%);
       }
 
       * { box-sizing: border-box; }
@@ -136,9 +119,13 @@
 
       .workspace-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.55fr) minmax(360px, 0.75fr);
+        grid-template-columns: minmax(0, 1fr);
         align-items: start;
         gap: 16px;
+      }
+      .primary-stack {
+        display: grid;
+        gap: 18px;
       }
       .column-stack {
         min-width: 0;
@@ -195,9 +182,7 @@
       .creature-subtitle {
         margin: 2px 0 0;
         color: var(--muted);
-        font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
+        font-size: 13px;
       }
       .need-status {
         margin: 6px 0 0;
@@ -244,9 +229,9 @@
         position: relative;
         z-index: 1;
         width: 100%;
-        min-height: 520px;
-        max-height: 760px;
-        aspect-ratio: 1.9 / 1;
+        height: clamp(560px, 68vh, 900px);
+        min-height: 560px;
+        max-height: 900px;
       }
       #app {
         position: absolute;
@@ -301,12 +286,12 @@
 
       .world-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
       }
       .world-object {
         min-width: 0;
-        padding: 11px 12px;
+        padding: 16px 18px;
         border: 1px solid var(--line);
         border-radius: 10px 5px 10px 5px;
         background: color-mix(in srgb, var(--surface-soft) 43%, var(--surface));
@@ -333,23 +318,23 @@
         gap: 7px;
         min-width: 0;
       }
-      .world-object-icon { flex: 0 0 auto; font-size: 20px; }
-      .world-object-heading h3 { min-width: 0; margin: 0; font-size: 12px; }
+      .world-object-icon { flex: 0 0 auto; font-size: 25px; }
+      .world-object-heading h3 { min-width: 0; margin: 0; font-size: 16px; }
       .world-object-zone {
         color: var(--muted);
-        font: 600 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+        font: 600 11px ui-sans-serif, system-ui, sans-serif;
       }
-      .world-object-range { display: block; margin-top: 4px; color: var(--teal-dark); font-size: 9px; font-weight: 700; }
+      .world-object-range { display: block; margin-top: 4px; color: var(--teal-dark); font-size: 12px; font-weight: 700; }
       .world-object-description {
         margin: 6px 0 7px;
         color: var(--muted);
-        font-size: 10.5px;
+        font-size: 13px;
       }
       .world-object-actions { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
       .world-object-action-button {
-        min-height: 30px; padding: 5px 8px; border: 1px solid color-mix(in srgb, var(--teal) 38%, var(--line));
+        min-height: 40px; padding: 9px 13px; border: 1px solid color-mix(in srgb, var(--teal) 38%, var(--line));
         border-radius: 999px; color: var(--teal-dark); background: var(--surface);
-        font: 700 10px ui-sans-serif, system-ui, sans-serif; cursor: pointer;
+        font: 700 13px ui-sans-serif, system-ui, sans-serif; cursor: pointer;
       }
       .world-object-action-button:hover { background: color-mix(in srgb, var(--teal) 12%, var(--surface)); }
       .world-object-action-button:focus-visible { outline: 3px solid color-mix(in srgb, var(--teal) 35%, transparent); outline-offset: 2px; }
@@ -358,17 +343,17 @@
         align-items: baseline;
         justify-content: space-between;
         gap: 5px;
-        font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+        font: 700 11px ui-sans-serif, system-ui, sans-serif;
       }
       .world-object-status { color: var(--teal-dark); }
       .world-object[data-ready="false"] .world-object-status { color: #927039; }
       .world-object-uses { color: var(--muted); }
       .habitat-challenges { margin: 10px 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px 5px 10px 5px; background: color-mix(in srgb, var(--amber) 8%, var(--surface)); }
       .habitat-challenges-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
-      .habitat-challenges-heading strong { font-size: 11px; }
-      .habitat-challenges-heading output { color: var(--muted); font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .habitat-challenges-heading strong { font-size: 14px; }
+      .habitat-challenges-heading output { color: var(--muted); font: 700 11px ui-sans-serif, system-ui, sans-serif; }
       .habitat-challenges-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
-      .habitat-challenge { padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: 9px; }
+      .habitat-challenge { padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: 12px; }
       .habitat-challenge[data-complete="true"] { border-color: color-mix(in srgb, var(--teal) 50%, var(--line)); color: var(--teal-dark); background: color-mix(in srgb, var(--teal) 10%, var(--surface)); }
       .world-action-form {
         display: grid;
@@ -441,7 +426,7 @@
         .activity-log li strong { grid-column: 2; }
         .activity-log li span { grid-column: 2; }
       }
-      .world-note { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+      .world-note { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 
       .drive-grid {
         display: grid;
@@ -833,17 +818,47 @@
         text-align: center;
       }
 
+      .advanced-lab { margin-top: 20px; border-top: 1px solid var(--line); }
+      .advanced-lab > summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 14px; padding: 15px 4px; color: var(--ink); font-size: 14px; font-weight: 750; cursor: pointer; list-style-position: inside; }
+      .advanced-lab > summary small { color: var(--muted); font-size: 12px; font-weight: 500; }
+      .advanced-content { display: grid; gap: 15px; padding: 0 0 18px; }
+      .simulation-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+      .simulation-controls .speed-btn { min-width: 64px; min-height: 38px; font-size: 13px; }
+      .simulation-controls .autonomy-control { font-size: 13px; }
+      .advanced-content .world-action-form { max-width: 760px; }
+      .advanced-content .world-mode-row, .advanced-content .activity-panel { padding: 0 4px; }
+      .advanced-content .workspace-grid { grid-template-columns: minmax(0, 1fr); }
+      .advanced-content .drive-grid { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+      .page-header { margin-bottom: 12px; }
+      .page-description { font-size: 16px; }
+      .need-status { display: inline-flex; align-items: center; min-height: 34px; margin-top: 9px; padding: 6px 11px; border: 1px solid color-mix(in srgb, var(--teal) 35%, var(--line)); border-radius: 999px; background: color-mix(in srgb, var(--teal) 8%, var(--surface)); font-size: 14px; }
+      .world-panel { padding: 22px; }
+      .world-panel .panel-heading { align-items: start; margin-bottom: 16px; }
+      .world-panel .panel-heading h2 { font-size: 22px; }
+      .world-panel .panel-heading p { max-width: 680px; font-size: 14px; }
+      .world-panel .drive-count { white-space: normal; font: 700 13px ui-sans-serif, system-ui, sans-serif; }
+      .world-feedback { min-height: 24px; font-size: 14px; }
+      .world-object-state { font-size: 12px; }
+      .world-object-actions { margin-top: 12px; }
+      .habitat-challenges { margin: 0 0 15px; padding: 13px 15px; }
+      .habitat-challenge { padding: 7px 11px; font-size: 12px; }
+      .habitat-caption { font-size: 13px; }
+
       @media (max-width: 980px) {
         .workspace-grid { grid-template-columns: minmax(0, 1fr); }
       }
       @media (max-width: 640px) {
         .shell { padding: 14px 11px; }
-        .page-description { font-size: 12px; }
+        .page-description { font-size: 14px; }
         .habitat { border-radius: 21px 9px 21px 9px; }
+        .page-description { font-size: 14px; }
+        .world-panel { padding: 18px 15px; }
+        .world-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+        .advanced-lab > summary { font-size: 13px; }
         .habitat-header { padding: 15px 15px 0; }
-        .creature-stage { min-height: 320px; aspect-ratio: 1.02 / 1; }
-        .habitat-caption { padding: 0 14px 13px; font-size: 10px; }
-        .drive-grid, .world-grid, .genome-grid, .chem-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+        .creature-stage { height: min(60vh, 650px); min-height: 400px; }
+        .habitat-caption { padding: 0 14px 13px; font-size: 12px; }
+        .drive-grid, .world-grid, .genome-grid, .chem-strip { grid-template-columns: minmax(0, 1fr); gap: 10px; }
         .drives-panel, .world-panel, .learning-panel, .brain-panel, .genome-panel, .persistence-panel { padding: 15px 13px 16px; }
         .world-action-form { grid-template-columns: minmax(0, 1fr); }
         .brain-action-row { grid-template-columns: minmax(78px, 0.6fr) minmax(0, 1fr) auto; gap: 7px; }
@@ -853,7 +868,7 @@
         .teach-button { grid-column: 1 / -1; }
       }
       @media (max-width: 390px) {
-        .creature-stage { min-height: 300px; }
+        .creature-stage { min-height: 400px; }
         .teach-form, .vocab-list, .genome-grid, .chem-strip { grid-template-columns: minmax(0, 1fr); }
         .teach-button { grid-column: auto; }
       }
@@ -863,33 +878,21 @@
     <main class="shell">
       <header class="page-header">
         <div>
-          <p class="eyebrow">Creatures · L1 + L2 + Mundo espacial + F2 Genoma + Fase 5</p>
-          <h1>Una vida pequeña.<br />Un organismo digital completo.</h1>
-          <p class="page-description">Nilo camina por su hábitat, aprende con refuerzo Hebbiano visible en la vista neural L2, expresa genes con metilación reversible y conserva su partida completa.</p>
-        </div>
-        <div class="header-meta">
-          <div class="speed-bar" role="group" aria-label="Velocidad de simulación">
-            <button class="speed-btn" type="button" data-speed="0" aria-pressed="false">Pausa</button>
-            <button class="speed-btn" type="button" data-speed="1" aria-pressed="true">1×</button>
-            <button class="speed-btn" type="button" data-speed="3" aria-pressed="false">3×</button>
-            <button class="speed-btn" type="button" data-speed="8" aria-pressed="false">8×</button>
-          </div>
-          <span class="speed-hint">Teclas: <kbd>P</kbd> pausa · <kbd>1</kbd>/<kbd>3</kbd>/<kbd>8</kbd> velocidad</span>
-          <span class="phase-mark">FASES 0–5 + F2 · ACTIVO</span>
+          <p class="eyebrow">TU PEQUEÑO HÁBITAT</p>
+          <h1>Cuida y explora con Nilo</h1>
+          <p class="page-description">Elige qué hacer con él o haz clic en el suelo para guiarlo.</p>
         </div>
       </header>
 
-      <div class="workspace-grid">
-        <div class="column-stack">
-          <section class="habitat" aria-label="Hábitat de Nilo">
+      <div class="primary-stack">
+        <section class="habitat" aria-label="Hábitat de Nilo">
             <header class="habitat-header">
               <div>
                 <h2 id="creature-name" class="creature-name">Nilo</h2>
                 <p id="creature-subtitle" class="creature-subtitle">GEN. 01 · DÍA 01 · EMBRIÓN</p>
-                <p id="need-status" class="need-status" aria-label="Necesidad principal">Necesidades tranquilas</p>
+                <p id="need-status" class="need-status" aria-label="Necesidad principal">Lo que necesita: tranquilo</p>
               </div>
               <div class="header-meta">
-                <label class="autonomy-control" for="autonomy-toggle"><input id="autonomy-toggle" type="checkbox" /> Nilo decide por sí mismo</label>
                 <output id="mood" class="mood-badge" data-mood="happy" aria-live="polite">Feliz</output>
               </div>
             </header>
@@ -899,35 +902,40 @@
               </canvas>
             </div>
             <p class="habitat-caption" aria-label="Leyenda del hábitat">
-              <span><i class="legend-halo" aria-hidden="true"></i> Halo: activo o al alcance</span>
-              <span><i class="legend-route" aria-hidden="true"></i> Línea: camino y destino</span>
-              <span>Haz clic en el suelo para guiar a Nilo</span><span>Descanso · Juego · Observación</span>
+              <span>Haz clic en el suelo y Nilo caminará hasta allí.</span><span>Rincón de descanso</span><span>Zona de juego</span><span>Ventana al jardín</span>
             </p>
           </section>
-
-          <section class="drives-panel" aria-labelledby="drives-title">
+        <section class="world-panel" aria-labelledby="world-title">
             <div class="panel-heading">
               <div>
-                <h2 id="drives-title">Bioquímica y necesidades</h2>
-                <p>8 drives acoplados a 6 neuroquímicos con integración determinista.</p>
+                <h2 id="world-title">¿Qué hacemos?</h2>
+                <p>Elige una tarjeta. Nilo irá hasta ese objeto y hará la actividad contigo.</p>
               </div>
-              <span class="drive-count">8 DRIVES · 6 QUÍMICOS</span>
-            </div>
-            <div id="drive-grid" class="drive-grid" aria-label="Niveles actuales de los drives"></div>
-            <div id="chem-strip" class="chem-strip" aria-label="Niveles actuales de los neuroquímicos"></div>
-          </section>
-
-          <section class="world-panel" aria-labelledby="world-title">
-            <div class="panel-heading">
-              <div>
-                <h2 id="world-title">Guía a Nilo por su hábitat</h2>
-                <p>Elige una actividad o haz clic en el suelo. Nilo camina hacia donde le indiques y cada objeto provoca un cambio visible.</p>
-              </div>
-              <output id="world-action" class="drive-count" aria-label="Origen y verbo de la última acción">Cerebro · sin acción</output>
+              <output id="world-action" class="drive-count" aria-label="Última actividad">Elige una actividad</output>
             </div>
             <section id="habitat-challenges" class="habitat-challenges" aria-label="Retos del hábitat"></section>
             <div id="world-grid" class="world-grid" aria-label="Objetos disponibles en el mundo"></div>
-            <form id="world-action-form" class="world-action-form">
+            <p id="world-feedback" class="world-feedback" role="status" aria-live="polite">Elige una actividad para empezar.</p>
+            <p class="world-note">Nilo caminará hasta el objeto que elijas. Las decisiones son tuyas.</p>
+          </section>
+      </div>
+
+      <details class="advanced-lab">
+        <summary>
+          <span>Ver herramientas avanzadas</span>
+          <small>Cerebro · necesidades · genes · vocabulario · guardado</small>
+        </summary>
+        <div class="advanced-content">
+          <div class="simulation-controls">
+            <div class="speed-bar" role="group" aria-label="Velocidad de simulación">
+              <button class="speed-btn" type="button" data-speed="0" aria-pressed="false">Pausa</button>
+              <button class="speed-btn" type="button" data-speed="1" aria-pressed="true">Normal</button>
+              <button class="speed-btn" type="button" data-speed="3" aria-pressed="false">Rápido</button>
+              <button class="speed-btn" type="button" data-speed="8" aria-pressed="false">Muy rápido</button>
+            </div>
+            <label class="autonomy-control" for="autonomy-toggle"><input id="autonomy-toggle" type="checkbox" /> Dejar que Nilo decida solo</label>
+          </div>
+          <form id="world-action-form" class="world-action-form">
               <label class="world-action-label" for="world-action-select">
                 Probar un verbo sin entrenar el cerebro
                 <select id="world-action-select" name="action">
@@ -944,26 +952,31 @@
               </label>
               <button class="teach-button" type="submit">Probar acción</button>
             </form>
-            <div class="world-mode-row">
+<div class="world-mode-row">
               <label class="brain-toggle" for="spatial-strict">
                 <input id="spatial-strict" type="checkbox" checked />
                 Exigir cercanía física al objeto antes de aplicar impulso
               </label>
               <output id="world-coords" class="drive-count">Pos (0.50, 0.66)</output>
             </div>
-            <p id="world-feedback" class="world-feedback" role="status" aria-live="polite">Modo guiado: haz clic en el suelo o elige una acción para que Nilo vaya allí.</p>
-            <section class="activity-panel" aria-labelledby="activity-title">
+<section class="activity-panel" aria-labelledby="activity-title">
               <h3 id="activity-title">Actividad reciente</h3>
               <ol id="activity-log" class="activity-log" aria-label="Últimas decisiones, resultados y refuerzos de Nilo">
                 <li class="activity-empty">Todavía no hay actividad.</li>
               </ol>
             </section>
-            <p class="world-note">Las pruebas manuales no entrenan al cerebro. En modo espacial estricto, Nilo camina hasta entrar en el radio del objeto antes de recibir el impulso.</p>
+<section class="drives-panel" aria-labelledby="drives-title">
+            <div class="panel-heading">
+              <div>
+                <h2 id="drives-title">Bioquímica y necesidades</h2>
+                <p>8 drives acoplados a 6 neuroquímicos con integración determinista.</p>
+              </div>
+              <span class="drive-count">8 DRIVES · 6 QUÍMICOS</span>
+            </div>
+            <div id="drive-grid" class="drive-grid" aria-label="Niveles actuales de los drives"></div>
+            <div id="chem-strip" class="chem-strip" aria-label="Niveles actuales de los neuroquímicos"></div>
           </section>
-        </div>
-
-        <div class="column-stack">
-          <section class="brain-panel" aria-labelledby="brain-title">
+<section class="brain-panel" aria-labelledby="brain-title">
             <div class="panel-heading">
               <div>
                 <h2 id="brain-title">Cerebro v0.5 y Vista Neural L2</h2>
@@ -1061,9 +1074,9 @@
             <p id="persistence-feedback" class="vocab-feedback" role="status" aria-live="polite"></p>
           </section>
         </div>
-      </div>
+      </details>
 
-      <p class="footnote">Arquitectura por contratos puros: `BiochemEngine` conserva la autoridad bioquímica; `CanvasVisuals` y `BrainView` (L2/D2) son puertos estrictos de solo lectura.</p>
+      <p class="footnote">Un juego pequeño para explorar, cuidar y descubrir qué le gusta a Nilo.</p>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

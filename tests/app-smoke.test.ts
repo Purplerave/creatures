@@ -113,6 +113,16 @@ describe('app — arranque', () => {
     expect(text('brain-stats')).toMatch(/^\d+ decisiones · \d+ refuerzos$/);
   });
 
+  it('deja el juego visible y pliega los paneles técnicos', () => {
+    const advanced = document.querySelector<HTMLDetailsElement>('.advanced-lab');
+    expect(advanced?.open).toBe(false);
+    expect(advanced?.querySelector('#brain-canvas')).not.toBeNull();
+    expect(document.querySelector('.primary-stack #app')).not.toBeNull();
+    expect(document.querySelector('.primary-stack #world-grid')).not.toBeNull();
+    expect(document.querySelector('.primary-stack #drive-grid')).toBeNull();
+    expect((document.getElementById('autonomy-toggle') as HTMLInputElement).checked).toBe(false);
+  });
+
   it('marca la acción tomada en el panel y la refleja en el badge de estado', () => {
     runFrames(10);
     const chosen = document.querySelectorAll('#brain-action-grid .brain-action-row[data-chosen="true"]');
@@ -192,7 +202,7 @@ describe('app — enseñanza manual', () => {
     const before = text('brain-stats');
     form.dispatchEvent(new window.Event('submit', { cancelable: true, bubbles: true }));
     expect(text('world-feedback')).toMatch(/^Prueba manual:/);
-    expect(text('world-action')).toMatch(/^Prueba manual · Descansar/);
+    expect(text('world-action')).toMatch(/^Tú elegiste · Descansar/);
     expect(text('world-feedback')).toMatch(/No se enseña al cerebro/);
     expect(text('brain-stats')).toBe(before);
 

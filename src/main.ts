@@ -545,9 +545,7 @@ function renderSnapshot(snapshot: TickResult): void {
   const stage = resolveLifeStage(simTime);
   if (creatureNameHeading) creatureNameHeading.textContent = creatureName;
   if (creatureSubtitle) {
-    creatureSubtitle.textContent = `GEN. ${String(genome.getGeneration()).padStart(2, '0')} · DÍA ${String(
-      stage.day,
-    ).padStart(2, '0')} · ${stage.label.toUpperCase()}`;
+    creatureSubtitle.textContent = `Generación ${genome.getGeneration()} · día ${stage.day} · ${stage.label}`;
   }
 
   const speechText = simTime < speechExpiresAt ? activeSpeech : undefined;
@@ -686,10 +684,10 @@ function renderWorld(): void {
 
   const lastActionId = snapshot.lastInteraction?.actionId;
   const lastAction = actionSpace.find((action) => action.id === lastActionId);
-  const origin = lastActionId
-    ? lastWorldSource === 'manual' ? 'Prueba manual' : 'Cerebro'
-    : autonomousMode ? 'Cerebro' : 'Modo guiado';
-  worldActionElement.textContent = `${origin} · ${lastAction?.name ?? (lastActionId ? WORLD_ACTION_LABELS[lastActionId] : 'sin acción')}`;
+  const actor = lastWorldSource === 'manual' ? 'Tú elegiste' : 'Nilo eligió';
+  worldActionElement.textContent = lastActionId
+    ? `${actor} · ${lastAction?.name ?? WORLD_ACTION_LABELS[lastActionId]}`
+    : 'Elige una actividad';
 }
 
 function actionReadoutIndex(actions: readonly { id: string }[], id: string): number {

@@ -249,11 +249,11 @@ export class CanvasVisuals implements IVisuals {
     const backObjects = spatial.objects.filter((obj) => obj.position.y <= spatial.creaturePosition.y);
     const frontObjects = spatial.objects.filter((obj) => obj.position.y > spatial.creaturePosition.y);
 
-    for (const obj of backObjects) this.drawWorldObject(context, obj, spatial, time);
+    for (const obj of backObjects) this.drawWorldObject(context, obj, time);
 
     const speedMag = Math.hypot(spatial.creatureVelocity.x, spatial.creatureVelocity.y);
     const walkAmount = Math.min(1, speedMag / 0.65);
-    const depthScale = 0.34 + 0.10 * spatial.creaturePosition.y;
+    const depthScale = (0.34 + 0.10 * spatial.creaturePosition.y) * 0.68;
     const scale = (Math.min(this.width, this.height) / VIEWBOX_SIZE) * depthScale;
     const centerX = spatial.creaturePosition.x * this.width;
     const footOffset = 185 * scale;
@@ -273,7 +273,7 @@ export class CanvasVisuals implements IVisuals {
       spatial.heading,
     );
 
-    for (const obj of frontObjects) this.drawWorldObject(context, obj, spatial, time);
+    for (const obj of frontObjects) this.drawWorldObject(context, obj, time);
 
     if (spatial.speech) {
       this.drawSpeechBubble(context, centerX, centerY - 195 * scale, spatial.speech);
@@ -347,22 +347,22 @@ export class CanvasVisuals implements IVisuals {
     const zones = [
       { left: 0, width: 0.32, fill: '#d9c8ab', label: 'DESCANSO' },
       { left: 0.32, width: 0.36, fill: '#c7dccd', label: 'JUEGO Y EXPLORACIÓN' },
-      { left: 0.68, width: 0.32, fill: '#c8dce4', label: 'OBSERVAR' },
+      { left: 0.68, width: 0.32, fill: '#c8dce4', label: 'JARDÍN' },
     ];
     context.save();
     for (const zone of zones) {
       const x = zone.left * this.width;
       const width = zone.width * this.width;
-      context.globalAlpha = 0.17;
+      context.globalAlpha = 0.26;
       context.fillStyle = zone.fill;
       context.fillRect(x, 0, width, this.height);
       context.globalAlpha = 0.45;
       context.strokeStyle = '#55706a';
       context.setLineDash([5, 7]);
       context.beginPath(); context.moveTo(x + width, 0); context.lineTo(x + width, this.height); context.stroke();
-      context.globalAlpha = 0.72;
+      context.globalAlpha = 0.86;
       context.setLineDash([]);
-      context.font = '700 10px ui-sans-serif, system-ui, sans-serif';
+      context.font = '700 14px ui-sans-serif, system-ui, sans-serif';
       context.textAlign = 'center';
       context.fillStyle = '#31564e';
       context.fillText(zone.label, x + width / 2, 18);
@@ -390,43 +390,32 @@ export class CanvasVisuals implements IVisuals {
     context.lineTo(endX, endY);
     context.stroke();
     context.setLineDash([]);
+    context.strokeStyle = '#087f78';
+    context.lineWidth = 3;
+    context.beginPath();
+    context.moveTo(endX, endY + 14);
+    context.lineTo(endX, endY - 18);
+    context.stroke();
     context.fillStyle = '#087f78';
     context.beginPath();
-    context.arc(endX, endY, 7, 0, FULL_TURN);
+    context.moveTo(endX, endY - 18);
+    context.lineTo(endX + 20, endY - 11);
+    context.lineTo(endX, endY - 3);
+    context.closePath();
     context.fill();
-    context.strokeStyle = '#ffffff';
-    context.lineWidth = 2;
-    context.beginPath();
-    context.arc(endX, endY, 3, 0, FULL_TURN);
-    context.stroke();
     context.restore();
   }
 
   private drawWorldObject(
     context: CanvasRenderingContext2D,
     obj: RenderWorldObject,
-    spatial: SpatialRenderState,
     time: number,
   ): void {
     const x = obj.position.x * this.width;
     const y = obj.position.y * this.height;
-    const isTarget = spatial.targetObjectId === obj.id;
-    const isActive = spatial.activeObjectId === obj.id;
-    const unit = Math.max(22, Math.min(this.width, this.height) * 0.072);
+    const unit = Math.max(30, Math.min(this.width, this.height) * 0.095);
 
     context.save();
-
-    // Halo interactivo de selección/alcance.
-    if (isTarget || isActive || obj.inRange) {
-      const ringPulse = 1 + 0.08 * Math.sin(FULL_TURN * time * 1.6);
-      context.save();
-      context.globalAlpha = isActive ? 0.28 : 0.16;
-      context.fillStyle = obj.ready ? '#087f78' : '#e8a53b';
-      context.beginPath();
-      context.ellipse(x, y + unit * 0.34, unit * 0.98 * ringPulse, unit * 0.34 * ringPulse, 0, 0, FULL_TURN);
-      context.fill();
-      context.restore();
-    }
 
     if (obj.id === 'nido') {
       // Nido tejido cálido.
@@ -546,26 +535,14 @@ export class CanvasVisuals implements IVisuals {
       context.stroke();
     }
 
-    // Arco de recuperación cuando el objeto está en cooldown + etiqueta legible.
-    if (!obj.ready && obj.cooldownSeconds > 0) {
-      const ratio = Math.min(1, Math.max(0, obj.cooldownRemaining / obj.cooldownSeconds));
-      context.save();
-      context.strokeStyle = '#e8a53b';
-      context.lineWidth = 3;
-      context.beginPath();
-      context.arc(x, y, unit * 0.62, -Math.PI / 2, -Math.PI / 2 + FULL_TURN * ratio);
-      context.stroke();
-      context.restore();
-    }
-
     if (typeof context.fillText === 'function') {
       context.save();
-      const labelWidth = Math.max(unit * 1.25, obj.name.length * 6 + 16);
+      const labelWidth = Math.max(unit * 1.25, obj.name.length * 7.6 + 22);
       const labelY = y + unit * 0.72;
       context.globalAlpha = 0.9;
       context.fillStyle = '#fbfdfb';
-      context.fillRect(x - labelWidth / 2, labelY - 13, labelWidth, 19);
-      context.font = '700 11px ui-sans-serif, system-ui, sans-serif';
+      context.fillRect(x - labelWidth / 2, labelY - 18, labelWidth, 25);
+      context.font = '700 14px ui-sans-serif, system-ui, sans-serif';
       context.textAlign = 'center';
       context.fillStyle = '#14221f';
       context.globalAlpha = 1;
