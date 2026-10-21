@@ -1172,6 +1172,7 @@ function loop(now: number): void {
 }
 function cleanup(): void {
   cancelAnimationFrame(animationFrame);
+  window.removeEventListener('keydown', onSpeedShortcut);
   visuals.unmount();
   brainView?.unmount();
   habitatCanvas.removeEventListener('click', onHabitatCanvasClick);
