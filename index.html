@@ -426,6 +426,15 @@
         .activity-log li strong { grid-column: 2; }
         .activity-log li span { grid-column: 2; }
       }
+      .learning-panel {
+        padding: 16px 18px;
+        border: 1px solid color-mix(in srgb, var(--teal) 35%, var(--line));
+        border-radius: 16px 7px 16px 7px;
+        background: color-mix(in srgb, var(--teal) 7%, var(--surface));
+      }
+      .learning-summary { margin: 12px 0 4px; font-size: 15px; font-weight: 800; }
+      .learning-last { margin: 0; color: var(--teal-dark); font-size: 13px; font-weight: 700; }
+      .learning-note { margin: 9px 0 0; color: var(--muted); font-size: 11px; }
       .world-note { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 
       .drive-grid {
@@ -905,6 +914,18 @@
               <span>Haz clic en el suelo y Nilo caminará hasta allí.</span><span>Rincón de descanso</span><span>Zona de juego</span><span>Ventana al jardín</span>
             </p>
           </section>
+        <section class="learning-panel" aria-labelledby="learning-title">
+          <div class="panel-heading">
+            <div>
+              <h2 id="learning-title">Lo que Nilo está aprendiendo</h2>
+              <p>Tus actividades exitosas son ejemplos. Si una mejora sus necesidades, su cerebro refuerza esa elección para situaciones parecidas.</p>
+            </div>
+            <output id="learning-count" class="drive-count" aria-live="polite">0 refuerzos</output>
+          </div>
+          <p id="learning-summary" class="learning-summary">Todavía no hay una preferencia aprendida.</p>
+          <p id="learning-last" class="learning-last" role="status" aria-live="polite">Elige una actividad para enseñarle con sus consecuencias.</p>
+          <p class="learning-note">El aprendizaje es visible y se guarda en el cerebro de la partida. Nilo aprende preferencias entre 5 tipos de acción; las palabras se enseñan aparte en «Vocabulario».</p>
+        </section>
         <section class="world-panel" aria-labelledby="world-title">
             <div class="panel-heading">
               <div>
