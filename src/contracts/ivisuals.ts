@@ -11,6 +11,7 @@ import type { ChemicalId, DriveId, DriveState } from './types';
 export interface RenderWorldObject {
   id: string;
   name: string;
+  zoneLabel: string;
   icon: string;
   position: { x: number; y: number };
   cooldownRemaining: number;
@@ -26,6 +27,8 @@ export interface SpatialRenderState {
   creatureVelocity: { x: number; y: number };
   heading: -1 | 1;
   targetObjectId: string | null;
+  /** Destination for a manual floor click or an object action. */
+  targetPosition?: { x: number; y: number } | null;
   activeObjectId: string | null;
   objects: readonly RenderWorldObject[];
   speech?: string;

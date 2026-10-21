@@ -243,7 +243,8 @@ export class CanvasVisuals implements IVisuals {
     }
 
     // Modo hábitat espacial (Fase 4): orden por profundidad y escala proporcionada.
-    this.drawNavigationGuide(context, spatial, time);
+    this.drawHabitatZones(context);
+    this.drawNavigationGuide(context, spatial);
 
     const backObjects = spatial.objects.filter((obj) => obj.position.y <= spatial.creaturePosition.y);
     const frontObjects = spatial.objects.filter((obj) => obj.position.y > spatial.creaturePosition.y);
@@ -252,7 +253,7 @@ export class CanvasVisuals implements IVisuals {
 
     const speedMag = Math.hypot(spatial.creatureVelocity.x, spatial.creatureVelocity.y);
     const walkAmount = Math.min(1, speedMag / 0.65);
-    const depthScale = 0.44 + 0.14 * spatial.creaturePosition.y;
+    const depthScale = 0.34 + 0.10 * spatial.creaturePosition.y;
     const scale = (Math.min(this.width, this.height) / VIEWBOX_SIZE) * depthScale;
     const centerX = spatial.creaturePosition.x * this.width;
     const footOffset = 185 * scale;
@@ -342,33 +343,62 @@ export class CanvasVisuals implements IVisuals {
     context.restore();
   }
 
-  private drawNavigationGuide(
-    context: CanvasRenderingContext2D,
-    spatial: SpatialRenderState,
-    time: number,
-  ): void {
-    if (!spatial.targetObjectId) return;
-    const target = spatial.objects.find((item) => item.id === spatial.targetObjectId);
-    if (!target) return;
+  private drawHabitatZones(context: CanvasRenderingContext2D): void {
+    const zones = [
+      { left: 0, width: 0.32, fill: '#d9c8ab', label: 'DESCANSO' },
+      { left: 0.32, width: 0.36, fill: '#c7dccd', label: 'JUEGO Y EXPLORACIÓN' },
+      { left: 0.68, width: 0.32, fill: '#c8dce4', label: 'OBSERVAR' },
+    ];
+    context.save();
+    for (const zone of zones) {
+      const x = zone.left * this.width;
+      const width = zone.width * this.width;
+      context.globalAlpha = 0.17;
+      context.fillStyle = zone.fill;
+      context.fillRect(x, 0, width, this.height);
+      context.globalAlpha = 0.45;
+      context.strokeStyle = '#55706a';
+      context.setLineDash([5, 7]);
+      context.beginPath(); context.moveTo(x + width, 0); context.lineTo(x + width, this.height); context.stroke();
+      context.globalAlpha = 0.72;
+      context.setLineDash([]);
+      context.font = '700 10px ui-sans-serif, system-ui, sans-serif';
+      context.textAlign = 'center';
+      context.fillStyle = '#31564e';
+      context.fillText(zone.label, x + width / 2, 18);
+    }
+    context.restore();
+  }
 
+  private drawNavigationGuide(context: CanvasRenderingContext2D, spatial: SpatialRenderState): void {
+    const destination = spatial.targetPosition;
+    if (!destination) return;
     const startX = spatial.creaturePosition.x * this.width;
     const startY = spatial.creaturePosition.y * this.height;
-    const endX = target.position.x * this.width;
-    const endY = Math.max(0.58, target.position.y) * this.height;
+    const endX = destination.x * this.width;
+    const endY = destination.y * this.height;
     const dist = Math.hypot(endX - startX, endY - startY);
     if (dist < 14) return;
 
-    const steps = Math.min(8, Math.max(3, Math.floor(dist / 36)));
     context.save();
-    for (let i = 1; i <= steps; i++) {
-      const t = i / (steps + 1);
-      const pulse = 0.35 + 0.35 * Math.sin(FULL_TURN * (time * 1.4 - t));
-      context.globalAlpha = 0.14 + 0.2 * pulse;
-      context.fillStyle = '#087f78';
-      context.beginPath();
-      context.arc(startX + (endX - startX) * t, startY + (endY - startY) * t, 3.2, 0, FULL_TURN);
-      context.fill();
-    }
+    context.globalAlpha = 0.78;
+    context.strokeStyle = '#087f78';
+    context.lineWidth = 2.5;
+    context.setLineDash([8, 7]);
+    context.beginPath();
+    context.moveTo(startX, startY);
+    context.lineTo(endX, endY);
+    context.stroke();
+    context.setLineDash([]);
+    context.fillStyle = '#087f78';
+    context.beginPath();
+    context.arc(endX, endY, 7, 0, FULL_TURN);
+    context.fill();
+    context.strokeStyle = '#ffffff';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(endX, endY, 3, 0, FULL_TURN);
+    context.stroke();
     context.restore();
   }
 
@@ -466,6 +496,26 @@ export class CanvasVisuals implements IVisuals {
       context.beginPath();
       context.arc(x + wobble - unit * 0.14, y - unit * 0.12, unit * 0.15, 0, FULL_TURN);
       context.fill();
+    } else if (obj.id === 'peluche') {
+      context.fillStyle = '#ad7652'; context.strokeStyle = '#704632'; context.lineWidth = 2.4;
+      context.beginPath(); context.arc(x - unit * 0.23, y - unit * 0.3, unit * 0.2, 0, FULL_TURN); context.arc(x + unit * 0.23, y - unit * 0.3, unit * 0.2, 0, FULL_TURN); context.fill(); context.stroke();
+      context.beginPath(); context.ellipse(x, y + unit * 0.08, unit * 0.43, unit * 0.5, 0, 0, FULL_TURN); context.fill(); context.stroke();
+      context.fillStyle = '#f4d8b4'; context.beginPath(); context.ellipse(x, y + unit * 0.1, unit * 0.19, unit * 0.13, 0, 0, FULL_TURN); context.fill();
+      context.fillStyle = '#382b27'; context.beginPath(); context.arc(x - unit * 0.13, y - unit * 0.03, 2.2, 0, FULL_TURN); context.arc(x + unit * 0.13, y - unit * 0.03, 2.2, 0, FULL_TURN); context.fill();
+    } else if (obj.id === 'tunel') {
+      context.fillStyle = '#d28a62'; context.strokeStyle = '#8e563f'; context.lineWidth = 3;
+      context.beginPath(); context.moveTo(x - unit * 0.75, y + unit * 0.35); context.lineTo(x - unit * 0.75, y - unit * 0.08); context.quadraticCurveTo(x, y - unit * 0.95, x + unit * 0.75, y - unit * 0.08); context.lineTo(x + unit * 0.75, y + unit * 0.35); context.closePath(); context.fill(); context.stroke();
+      context.fillStyle = '#493e39'; context.beginPath(); context.ellipse(x, y + unit * 0.25, unit * 0.48, unit * 0.18, 0, 0, FULL_TURN); context.fill();
+    } else if (obj.id === 'ventana') {
+      context.fillStyle = '#fff8e9'; context.strokeStyle = '#8e6844'; context.lineWidth = 4;
+      context.fillRect(x - unit * 0.65, y - unit * 0.78, unit * 1.3, unit * 1.15); context.strokeRect(x - unit * 0.65, y - unit * 0.78, unit * 1.3, unit * 1.15);
+      context.fillStyle = '#b9e3ed'; context.fillRect(x - unit * 0.5, y - unit * 0.63, unit, unit * 0.85);
+      context.fillStyle = '#77ad77'; context.fillRect(x - unit * 0.5, y + unit * 0.06, unit, unit * 0.16);
+      context.strokeStyle = '#8e6844'; context.lineWidth = 3; context.beginPath(); context.moveTo(x, y - unit * 0.63); context.lineTo(x, y + unit * 0.21); context.moveTo(x - unit * 0.5, y - unit * 0.18); context.lineTo(x + unit * 0.5, y - unit * 0.18); context.stroke();
+    } else if (obj.id === 'xilofono') {
+      const colors = ['#e87d65', '#e9b958', '#76b5a3', '#7e9fc6', '#b58ab8'];
+      colors.forEach((color, index) => { const barX = x - unit * 0.62 + index * unit * 0.3; const barY = y - unit * 0.1 + Math.abs(index - 2) * unit * 0.09; context.fillStyle = color; context.fillRect(barX, barY, unit * 0.24, unit * 0.17); context.strokeStyle = '#785d43'; context.strokeRect(barX, barY, unit * 0.24, unit * 0.17); });
+      context.strokeStyle = '#9c6948'; context.lineWidth = 3; context.beginPath(); context.moveTo(x - unit * 0.52, y + unit * 0.16); context.lineTo(x - unit * 0.72, y + unit * 0.47); context.moveTo(x + unit * 0.52, y + unit * 0.16); context.lineTo(x + unit * 0.72, y + unit * 0.47); context.stroke();
     } else {
       // Lámpara de luz suave suspendida con haz volumétrico cálido.
       const glow = 0.55 + 0.3 * Math.sin(FULL_TURN * time * 0.75);
@@ -510,11 +560,16 @@ export class CanvasVisuals implements IVisuals {
 
     if (typeof context.fillText === 'function') {
       context.save();
-      context.font = '700 10px ui-sans-serif, system-ui, sans-serif';
+      const labelWidth = Math.max(unit * 1.25, obj.name.length * 6 + 16);
+      const labelY = y + unit * 0.72;
+      context.globalAlpha = 0.9;
+      context.fillStyle = '#fbfdfb';
+      context.fillRect(x - labelWidth / 2, labelY - 13, labelWidth, 19);
+      context.font = '700 11px ui-sans-serif, system-ui, sans-serif';
       context.textAlign = 'center';
       context.fillStyle = '#14221f';
-      context.globalAlpha = 0.82;
-      context.fillText(obj.name, x, y + unit * 0.72);
+      context.globalAlpha = 1;
+      context.fillText(obj.name, x, labelY);
       context.restore();
     }
 

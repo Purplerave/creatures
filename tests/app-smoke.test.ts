@@ -100,7 +100,13 @@ describe('app — arranque', () => {
     runFrames(3);
     expect(document.querySelectorAll('#drive-grid .drive-card')).toHaveLength(8);
     expect(document.querySelectorAll('#brain-action-grid .brain-action-row')).toHaveLength(DEFAULT_ACTIONS.length);
-    expect(document.querySelectorAll('#world-grid .world-object')).toHaveLength(4);
+    const objects = Array.from(document.querySelectorAll<HTMLElement>('#world-grid .world-object'));
+    expect(objects).toHaveLength(8);
+    expect(objects.map((object) => object.querySelector('h3')?.textContent)).toEqual([
+      'Nido mullido', 'Comedero', 'Pelota', 'Luz suave', 'Túnel de tela',
+      'Ventana al jardín', 'Xilófono de madera', 'Peluche compañero',
+    ]);
+    expect(document.querySelectorAll('#habitat-challenges .habitat-challenge')).toHaveLength(4);
     expect(document.getElementById('world-action-form')).not.toBeNull();
     expect(text('brain-decision')).not.toBe('');
     expect(text('brain-epsilon-value')).toMatch(/^\d+%$/);
@@ -115,7 +121,7 @@ describe('app — arranque', () => {
     expect(mood?.getAttribute('title')).toMatch(/decisión del cerebro · .+ · confianza \d/);
   });
 
-  it('avanza la simulación: decisiones y refuerzos crecen con los fotogramas', () => {
+  it('avanza las decisiones sin mover ni entrenar a Nilo en modo guiado', () => {
     runFrames(2);
     const before = text('brain-stats');
     runFrames(60);
@@ -123,8 +129,8 @@ describe('app — arranque', () => {
     const decisions = (value: string): number => Number(/^(\d+)/.exec(value)?.[1] ?? 0);
     const reinforcements = (value: string): number => Number(/(\d+) refuerzos$/.exec(value)?.[1] ?? 0);
     expect(decisions(after)).toBeGreaterThan(decisions(before));
-    // El refuerzo automático se aplica al cerrar cada intervalo de decisión.
-    expect(reinforcements(after)).toBeGreaterThan(reinforcements(before));
+    // El aprendizaje automático queda reservado para el modo autónomo.
+    expect(reinforcements(after)).toBe(reinforcements(before));
   });
 });
 
@@ -164,11 +170,19 @@ describe('app — enseñanza manual', () => {
 
     toggle.checked = true;
     toggle.dispatchEvent(new window.Event('change'));
+    const autonomy = document.getElementById('autonomy-toggle');
+    if (!(autonomy instanceof HTMLInputElement)) throw new Error('Falta el interruptor #autonomy-toggle');
+    autonomy.checked = true;
+    autonomy.dispatchEvent(new window.Event('change'));
     runFrames(60);
     expect(reinforcements(text('brain-stats'))).toBeGreaterThan(before);
   });
 
   it('probar un verbo activa un objeto sin acreditar esa prueba al cerebro', () => {
+    const autonomy = document.getElementById('autonomy-toggle');
+    if (!(autonomy instanceof HTMLInputElement)) throw new Error('Falta el interruptor #autonomy-toggle');
+    autonomy.checked = false;
+    autonomy.dispatchEvent(new window.Event('change'));
     const form = document.getElementById('world-action-form');
     const select = document.getElementById('world-action-select');
     if (!(form instanceof HTMLFormElement) || !(select instanceof HTMLSelectElement)) {

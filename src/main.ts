@@ -31,7 +31,7 @@ import {
 import { Vocabulary } from './vocab';
 import type { VocabEntry } from './contracts/ivocab';
 import { CanvasVisuals, deriveMood, MOOD_LABELS } from './visuals/canvasVisuals';
-import { CreatureWorld, type WorldObjectId } from './world';
+import { CreatureWorld, WORLD_ACTION_LABELS, type WorldObjectId } from './world';
 import { BrainView } from './render';
 import {
   clearGameFromStorage,
@@ -68,6 +68,7 @@ const punishButton = document.getElementById('punish-button');
 const autoRewardToggle = document.getElementById('auto-reward');
 const brainFeedback = document.getElementById('brain-feedback');
 const worldGrid = document.getElementById('world-grid');
+const habitatChallenges = document.getElementById('habitat-challenges');
 const worldAction = document.getElementById('world-action');
 const worldCoords = document.getElementById('world-coords');
 const worldFeedback = document.getElementById('world-feedback');
@@ -89,6 +90,7 @@ const exportJsonButton = document.getElementById('export-json-button');
 const importJsonInput = document.getElementById('import-json-input');
 const resetGameButton = document.getElementById('reset-game-button');
 const speedButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.speed-btn'));
+const autonomyToggle = document.getElementById('autonomy-toggle');
 
 if (!(canvas instanceof HTMLCanvasElement)) throw new Error('Falta el canvas #app');
 if (!moodBadge) throw new Error('Falta el indicador de estado #mood');
@@ -116,6 +118,7 @@ if (!(autoRewardToggle instanceof HTMLInputElement)) throw new Error('Falta el i
 if (!worldGrid || !worldAction || !worldFeedback) throw new Error('Falta el panel del mundo');
 if (!(worldActionForm instanceof HTMLFormElement)) throw new Error('Falta el formulario de prueba del mundo');
 if (!(worldActionSelect instanceof HTMLSelectElement)) throw new Error('Falta el selector de acciones del mundo');
+if (!(autonomyToggle instanceof HTMLInputElement)) throw new Error('Falta el interruptor #autonomy-toggle');
 
 const habitatCanvas = canvas;
 const moodBadgeElement = moodBadge;
@@ -137,6 +140,7 @@ const worldActionElement = worldAction;
 const worldFeedbackElement = worldFeedback;
 const worldActionFormElement = worldActionForm;
 const worldActionSelectElement = worldActionSelect;
+const autonomyToggleElement = autonomyToggle;
 const rewardButtonElement = rewardButton;
 const punishButtonElement = punishButton;
 
@@ -304,8 +308,36 @@ for (const action of actionSpace) {
 interface WorldObjectReadout {
   card: HTMLElement;
   zone: HTMLSpanElement;
+  range: HTMLOutputElement;
   status: HTMLOutputElement;
   uses: HTMLOutputElement;
+}
+
+const habitatChallengeDefs = [
+  { objectId: 'peluche', label: 'Abraza al peluche' },
+  { objectId: 'tunel', label: 'Atraviesa el túnel' },
+  { objectId: 'ventana', label: 'Mira el jardín' },
+  { objectId: 'xilofono', label: 'Toca el xilófono' },
+] as const;
+
+if (habitatChallenges) {
+  const heading = document.createElement('div');
+  heading.className = 'habitat-challenges-heading';
+  const title = document.createElement('strong');
+  title.textContent = 'Pequeños retos';
+  const progress = document.createElement('output');
+  progress.setAttribute('aria-label', 'Retos completados');
+  heading.append(title, progress);
+  const list = document.createElement('ul');
+  list.className = 'habitat-challenges-list';
+  for (const challenge of habitatChallengeDefs) {
+    const item = document.createElement('li');
+    item.className = 'habitat-challenge';
+    item.dataset.challengeId = challenge.objectId;
+    item.textContent = challenge.label;
+    list.append(item);
+  }
+  habitatChallenges.append(heading, list);
 }
 
 const worldObjectReadouts = new Map<string, WorldObjectReadout>();
@@ -313,8 +345,6 @@ for (const object of world.getSnapshot().objects) {
   const card = document.createElement('article');
   card.className = 'world-object';
   card.dataset.objectId = object.id;
-  card.setAttribute('role', 'button');
-  card.tabIndex = 0;
   card.setAttribute('aria-label', `${object.name}: ${object.description}`);
 
   const heading = document.createElement('div');
@@ -331,16 +361,27 @@ for (const object of world.getSnapshot().objects) {
 
   const zone = document.createElement('span');
   zone.className = 'world-object-zone';
-  zone.textContent = `${Math.round(object.distance * 100)}%`;
+  zone.textContent = object.zoneLabel;
   heading.append(titleWrap, zone);
+
+  const range = document.createElement('output');
+  range.className = 'world-object-range';
+  range.textContent = object.inRange ? 'Cerca' : `A ${Math.round(object.distance * 100)} %`;
 
   const description = document.createElement('p');
   description.className = 'world-object-description';
   description.textContent = object.description;
 
-  const action = document.createElement('p');
+  const action = document.createElement('div');
   action.className = 'world-object-actions';
-  action.textContent = object.actions.join(' · ');
+  for (const verb of object.actions) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'world-object-action-button';
+    button.textContent = actionSpace.find((item) => item.id === verb)?.name ?? WORLD_ACTION_LABELS[verb];
+    button.addEventListener('click', () => performWorldAction(verb, 'manual'));
+    action.append(button);
+  }
 
   const state = document.createElement('div');
   state.className = 'world-object-state';
@@ -352,19 +393,10 @@ for (const object of world.getSnapshot().objects) {
   uses.textContent = '0 usos';
   state.append(status, uses);
 
-  card.append(heading, description, action, state);
-  const activatePrimaryAction = (): void => {
-    const primaryVerb = object.actions[0];
-    if (primaryVerb) performWorldAction(primaryVerb, 'manual');
-  };
-  card.addEventListener('click', activatePrimaryAction);
-  card.addEventListener('keydown', (event) => {
-    if (event.repeat || (event.key !== 'Enter' && event.key !== ' ')) return;
-    event.preventDefault();
-    activatePrimaryAction();
-  });
+  card.append(heading, range, description, action, state);
+  
   worldGridElement.append(card);
-  worldObjectReadouts.set(object.id, { card, zone, status, uses });
+  worldObjectReadouts.set(object.id, { card, zone, range, status, uses });
 }
 
 const visuals = new CanvasVisuals();
@@ -392,8 +424,9 @@ let animationFrame = 0;
 let previousDiscomfort = 0;
 let suppressNextAutoReward = false;
 let autoReward = autoRewardElement.checked;
-let spatialStrict = spatialStrictToggle instanceof HTMLInputElement ? spatialStrictToggle.checked : false;
-let lastWorldSource: 'brain' | 'manual' = 'brain';
+let spatialStrict = spatialStrictToggle instanceof HTMLInputElement ? spatialStrictToggle.checked : true;
+let autonomousMode = autonomyToggleElement.checked;
+let lastWorldSource: 'brain' | 'manual' = 'manual';
 let activeSpeech = '';
 let speechExpiresAt = 0;
 
@@ -528,10 +561,12 @@ function renderSnapshot(snapshot: TickResult): void {
       creatureVelocity: worldSnap.creature.velocity,
       heading: worldSnap.creature.heading,
       targetObjectId: worldSnap.creature.targetObjectId,
+      targetPosition: worldSnap.creature.targetPosition,
       activeObjectId: worldSnap.lastInteraction?.applied ? worldSnap.lastInteraction.objectId : null,
       objects: worldSnap.objects.map((item) => ({
         id: item.id,
         name: item.name,
+        zoneLabel: item.zoneLabel,
         icon: item.icon,
         position: item.position,
         cooldownRemaining: item.cooldownRemaining,
@@ -626,12 +661,19 @@ function renderBrain(): void {
 
 function renderWorld(): void {
   const snapshot = world.getSnapshot();
+  const completedChallenges = habitatChallengeDefs.filter((challenge) => (snapshot.objects.find((object) => object.id === challenge.objectId)?.uses ?? 0) > 0).length;
+  const challengeProgress = habitatChallenges?.querySelector('output');
+  if (challengeProgress) challengeProgress.textContent = `${completedChallenges}/${habitatChallengeDefs.length} completados`;
+  for (const challenge of habitatChallengeDefs) {
+    const item = habitatChallenges?.querySelector<HTMLElement>(`[data-challenge-id="${challenge.objectId}"]`);
+    if (item) item.dataset.complete = String((snapshot.objects.find((object) => object.id === challenge.objectId)?.uses ?? 0) > 0);
+  }
   for (const object of snapshot.objects) {
     const readout = worldObjectReadouts.get(object.id);
     if (!readout) continue;
     readout.card.dataset.ready = String(object.ready);
     readout.card.dataset.inRange = String(object.inRange);
-    readout.zone.textContent = object.inRange ? 'en rango' : `dist ${Math.round(object.distance * 100)}%`;
+    readout.range.textContent = object.inRange ? 'Nilo está aquí' : `A ${Math.round(object.distance * 100)} %`;
     readout.status.textContent = object.ready
       ? 'Listo'
       : `Recuperándose · ${object.cooldownRemaining < 1 ? '<1' : object.cooldownRemaining.toFixed(1)} s`;
@@ -644,9 +686,10 @@ function renderWorld(): void {
 
   const lastActionId = snapshot.lastInteraction?.actionId;
   const lastAction = actionSpace.find((action) => action.id === lastActionId);
-  worldActionElement.textContent = `${lastWorldSource === 'manual' ? 'Prueba manual' : 'Cerebro'} · ${
-    lastAction?.name ?? 'sin acción'
-  }`;
+  const origin = lastActionId
+    ? lastWorldSource === 'manual' ? 'Prueba manual' : 'Cerebro'
+    : autonomousMode ? 'Cerebro' : 'Modo guiado';
+  worldActionElement.textContent = `${origin} · ${lastAction?.name ?? (lastActionId ? WORLD_ACTION_LABELS[lastActionId] : 'sin acción')}`;
 }
 
 function actionReadoutIndex(actions: readonly { id: string }[], id: string): number {
@@ -733,7 +776,7 @@ function performWorldAction(actionId: string, source: 'brain' | 'manual'): void 
   if (interaction.applied && interaction.impulse) {
     engine.applyImpulse(interaction.impulse);
     const spoken = recallSpokenWordForObject(interaction.objectId);
-    setSpeech(spoken ?? `${interaction.objectId === 'comedero' ? '¡Ñam!' : interaction.actionId}`);
+    setSpeech(spoken ?? (interaction.objectId === 'comedero' ? '¡Ñam!' : WORLD_ACTION_LABELS[interaction.actionId]));
   }
 
   // Una intervención de prueba cambia el estado del mundo, pero no debe
@@ -744,9 +787,7 @@ function performWorldAction(actionId: string, source: 'brain' | 'manual'): void 
   }
 
   const prefix = source === 'manual' ? 'Prueba manual' : 'Acción del cerebro';
-  const note = source === 'manual' && interaction.applied
-    ? ' No se enseña al cerebro con esta prueba.'
-    : '';
+  const note = source === 'manual' ? ' No se enseña al cerebro con esta prueba.' : '';
   worldFeedbackElement.textContent = `${prefix}: ${interaction.message}${note}`;
   recordActivity(source === 'manual' ? 'Prueba manual' : 'Decisión de Nilo', interaction.message);
   renderWorld();
@@ -801,8 +842,20 @@ function onPunishClick(): void {
 function onAutoRewardChange(): void {
   autoReward = autoRewardElement.checked;
   brainFeedbackElement.textContent = autoReward
-    ? `Refuerzo automático activo: la recompensa es la reducción de malestar (ganancia ${DEFAULT_REWARD_GAIN}).`
+    ? `El refuerzo por reducción de malestar solo aprende cuando Nilo está en modo autónomo (ganancia ${DEFAULT_REWARD_GAIN}).`
     : 'Refuerzo automático desactivado: solo cuentan los premios y castigos manuales.';
+}
+
+function onAutonomyChange(): void {
+  autonomousMode = autonomyToggleElement.checked;
+  if (!autonomousMode) {
+    const position = world.getSnapshot().creature.position;
+    world.moveCreatureTo(position);
+    worldFeedbackElement.textContent = 'Modo guiado: Nilo se moverá cuando tú se lo indiques.';
+  } else {
+    worldFeedbackElement.textContent = 'Modo autónomo: el cerebro decide las acciones de Nilo.';
+  }
+  renderWorld();
 }
 
 function onSpatialStrictChange(): void {
@@ -1068,6 +1121,7 @@ rewardButtonElement.addEventListener('click', onRewardClick);
 punishButtonElement.addEventListener('click', onPunishClick);
 autoRewardElement.addEventListener('change', onAutoRewardChange);
 spatialStrictToggle?.addEventListener('change', onSpatialStrictChange);
+autonomyToggleElement.addEventListener('change', onAutonomyChange);
 mutateGenomeButton?.addEventListener('click', onMutateGenomeClick);
 hatchOffspringButton?.addEventListener('click', onHatchOffspringClick);
 saveGameButton?.addEventListener('click', onSaveGameClick);
@@ -1088,7 +1142,8 @@ let lastSnapshot = initialSnapshot;
 previousDiscomfort = driveDiscomfort(initialSnapshot.drives);
 lastBrainOutput = brain.think(brainInputs(initialSnapshot, frame));
 const initialAction = actionFromValue(actionSpace, lastBrainOutput.actions[0] ?? 0);
-if (initialAction) performWorldAction(initialAction.action.id, 'brain');
+// La primera decisión se muestra, pero el modo inicial es guiado: no se ejecuta sola.
+void initialAction;
 renderSnapshot(initialSnapshot);
 renderBrain();
 renderWorld();
@@ -1122,7 +1177,7 @@ function loop(now: number): void {
       if (interaction.applied && interaction.impulse) {
         engine.applyImpulse(interaction.impulse);
         const spoken = recallSpokenWordForObject(interaction.objectId);
-        setSpeech(spoken ?? interaction.actionId);
+        setSpeech(spoken ?? WORLD_ACTION_LABELS[interaction.actionId]);
         if (interactionSource === 'manual') {
           // La interacción manual demorada altera el mundo, pero nunca entrena
           // al cerebro con el efecto de una orden del usuario.
@@ -1131,7 +1186,8 @@ function loop(now: number): void {
         }
       }
       const prefix = interactionSource === 'manual' ? 'Prueba manual' : 'Acción del cerebro';
-      worldFeedbackElement.textContent = `${prefix}: ${interaction.message}`;
+      const note = interactionSource === 'manual' ? ' No se enseña al cerebro con esta prueba.' : '';
+      worldFeedbackElement.textContent = `${prefix}: ${interaction.message}${note}`;
       recordActivity(interactionSource === 'manual' ? 'Resultado manual' : 'Resultado', interaction.message);
     }
 
@@ -1144,7 +1200,7 @@ function loop(now: number): void {
     if (simTime >= nextBrainDecision) {
       const skipReward = suppressNextAutoReward;
       suppressNextAutoReward = false;
-      if (autoReward && !skipReward) {
+      if (autoReward && autonomousMode && !skipReward) {
         const reward = driveReductionReward(previousDiscomfort, discomfort);
         brain.reinforce(reward);
         if (Math.abs(reward) >= 0.01) {
@@ -1154,8 +1210,10 @@ function loop(now: number): void {
       previousDiscomfort = discomfort;
 
       lastBrainOutput = brain.think(brainInputs(snapshot, frame));
-      const selected = actionFromValue(actionSpace, lastBrainOutput.actions[0] ?? 0);
-      if (selected) performWorldAction(selected.action.id, 'brain');
+      if (autonomousMode) {
+        const selected = actionFromValue(actionSpace, lastBrainOutput.actions[0] ?? 0);
+        if (selected) performWorldAction(selected.action.id, 'brain');
+      }
       renderBrain();
       nextBrainDecision = simTime + BRAIN_DECISION_INTERVAL;
     }
@@ -1190,6 +1248,7 @@ function cleanup(): void {
   punishButtonElement.removeEventListener('click', onPunishClick);
   autoRewardElement.removeEventListener('change', onAutoRewardChange);
   spatialStrictToggle?.removeEventListener('change', onSpatialStrictChange);
+  autonomyToggleElement.removeEventListener('change', onAutonomyChange);
   mutateGenomeButton?.removeEventListener('click', onMutateGenomeClick);
   hatchOffspringButton?.removeEventListener('click', onHatchOffspringClick);
   saveGameButton?.removeEventListener('click', onSaveGameClick);
