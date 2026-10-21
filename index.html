@@ -188,6 +188,15 @@
         letter-spacing: 0.05em;
         text-transform: uppercase;
       }
+      .need-status {
+        margin: 6px 0 0;
+        color: var(--teal-dark);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; }
+      }
       .mood-badge {
         display: inline-flex;
         align-items: center;
@@ -853,6 +862,7 @@
               <div>
                 <h2 id="creature-name" class="creature-name">Nilo</h2>
                 <p id="creature-subtitle" class="creature-subtitle">GEN. 01 · DÍA 01 · EMBRIÓN</p>
+                <p id="need-status" class="need-status" aria-label="Necesidad principal">Necesidades tranquilas</p>
               </div>
               <output id="mood" class="mood-badge" data-mood="happy" aria-live="polite">Feliz</output>
             </header>
