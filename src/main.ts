@@ -73,6 +73,9 @@ const worldAction = document.getElementById('world-action');
 const worldCoords = document.getElementById('world-coords');
 const worldFeedback = document.getElementById('world-feedback');
 const activityLog = document.getElementById('activity-log');
+const learningCount = document.getElementById('learning-count');
+const learningSummary = document.getElementById('learning-summary');
+const learningLast = document.getElementById('learning-last');
 const worldActionForm = document.getElementById('world-action-form');
 const worldActionSelect = document.getElementById('world-action-select');
 const spatialStrictToggle = document.getElementById('spatial-strict');
@@ -467,6 +470,44 @@ function brainInputs(snapshot: TickResult, tick: number): BrainInputs {
   return { drives: snapshot.drives, chemicals: snapshot.chemicals, tick };
 }
 
+/** Convierte acciones concretas del hábitat en los cinco hábitos que sí modela el cerebro. */
+function learningCategory(actionId: string): string | null {
+  if (actionId === 'descansar') return 'descansar';
+  if (actionId === 'acurrucarse' || actionId === 'abrazar') return 'acurrucarse';
+  if (actionId === 'observar' || actionId === 'mirar') return 'observar';
+  if (actionId === 'explorar' || actionId === 'atravesar' || actionId === 'tocar') return 'explorar';
+  if (actionId === 'buscar') return 'buscar';
+  return null;
+}
+
+/** Un ejemplo guiado solo enseña si su efecto bioquímico produjo un cambio medible. */
+function learnFromGuidedAction(actionId: string, before: TickResult, after: TickResult): void {
+  const categoryId = learningCategory(actionId);
+  const category = actionSpace.find((action) => action.id === categoryId);
+  if (!category) return;
+  const reward = driveReductionReward(driveDiscomfort(before.drives), driveDiscomfort(after.drives));
+  if (Math.abs(reward) < 0.01) {
+    if (learningLast) learningLast.textContent = `Nilo hizo «${WORLD_ACTION_LABELS[actionId as keyof typeof WORLD_ACTION_LABELS] ?? actionId}», pero sus necesidades apenas cambiaron; todavía no cuenta como aprendizaje.`;
+    return;
+  }
+
+  // Fija el contexto actual como traza y refuerza la categoría de la acción que tú elegiste.
+  brain.think(brainInputs(before, frame));
+  const previousReinforces = brainModel.getDebugState().reinforces;
+  brainModel.reinforce(category.value, reward);
+  const learned = brainModel.getDebugState().reinforces > previousReinforces;
+  const snapshot = engine.tick(0);
+  lastBrainOutput = brain.think(brainInputs(snapshot, frame));
+  const direction = reward > 0 ? 'mejoró' : 'empeoró';
+  const sign = reward > 0 ? '+' : '−';
+  const detail = `Aprendizaje guiado · ${category.name}: ${direction} tras «${WORLD_ACTION_LABELS[actionId as keyof typeof WORLD_ACTION_LABELS] ?? actionId}» (refuerzo ${sign}${Math.abs(reward).toFixed(2)}).`;
+  if (learningLast) learningLast.textContent = learned
+    ? `Aprendió: «${category.name}» ${direction} sus necesidades después de «${WORLD_ACTION_LABELS[actionId as keyof typeof WORLD_ACTION_LABELS] ?? actionId}». Ahora esa preferencia pesa más en un estado parecido.`
+    : 'No se pudo registrar el ejemplo en el cerebro.';
+  if (learned) recordActivity('Aprendizaje', detail);
+  renderBrain();
+}
+
 function renderGenomePanel(): void {
   if (!genomeGrid || !genomeStats) return;
   const loci = genome.getLoci();
@@ -635,6 +676,16 @@ function renderBrain(): void {
   const debug = brainModel.getDebugState();
   const decision = debug.lastDecision;
   brainStatsElement.textContent = `${debug.thinks} decisiones · ${debug.reinforces} refuerzos`;
+  if (learningCount) learningCount.textContent = `${debug.reinforces} ${debug.reinforces === 1 ? 'refuerzo' : 'refuerzos'}`;
+  if (learningSummary) {
+    const preferredIndex = debug.probabilities.reduce((best, probability, index, values) =>
+      probability > (values[best] ?? -1) ? index : best, 0);
+    const preferred = debug.actions[preferredIndex];
+    const chance = Math.round((debug.probabilities[preferredIndex] ?? 0) * 100);
+    learningSummary.textContent = preferred
+      ? `Ahora, con las necesidades actuales, Nilo elegiría más «${preferred.name}» (${chance} %).`
+      : 'Todavía no hay una preferencia aprendida.';
+  }
   brainDecisionElement.textContent = decision
     ? `${decision.name}${decision.explored ? ' (exploración ε)' : ''} · confianza ${(decision.confidence * 100).toFixed(0)}%`
     : 'Sin decisión todavía';
@@ -772,20 +823,22 @@ function performWorldAction(actionId: string, source: 'brain' | 'manual'): void 
   const interaction = world.performAction(actionId, { requireProximity });
   lastWorldSource = source;
   if (interaction.applied && interaction.impulse) {
+    const before = engine.tick(0);
     engine.applyImpulse(interaction.impulse);
+    const after = engine.tick(0);
+    if (source === 'manual') learnFromGuidedAction(interaction.actionId, before, after);
     const spoken = recallSpokenWordForObject(interaction.objectId);
     setSpeech(spoken ?? (interaction.objectId === 'comedero' ? '¡Ñam!' : WORLD_ACTION_LABELS[interaction.actionId]));
   }
 
-  // Una intervención de prueba cambia el estado del mundo, pero no debe
-  // atribuirse a la acción anterior que tomó el cerebro.
+  // Evita atribuir la intervención guiada al refuerzo automático de la última acción del cerebro.
   if (source === 'manual' && interaction.applied) {
     suppressNextAutoReward = true;
     previousDiscomfort = driveDiscomfort(engine.tick(0).drives);
   }
 
-  const prefix = source === 'manual' ? 'Prueba manual' : 'Acción del cerebro';
-  const note = source === 'manual' ? ' No se enseña al cerebro con esta prueba.' : '';
+  const prefix = source === 'manual' ? 'Actividad guiada' : 'Acción del cerebro';
+  const note = '';
   worldFeedbackElement.textContent = `${prefix}: ${interaction.message}${note}`;
   recordActivity(source === 'manual' ? 'Prueba manual' : 'Decisión de Nilo', interaction.message);
   renderWorld();
@@ -1173,18 +1226,19 @@ function loop(now: number): void {
       const interaction = stepResult.triggeredInteraction;
       const interactionSource = lastWorldSource;
       if (interaction.applied && interaction.impulse) {
+        const before = engine.tick(0);
         engine.applyImpulse(interaction.impulse);
+        const after = engine.tick(0);
+        if (interactionSource === 'manual') learnFromGuidedAction(interaction.actionId, before, after);
         const spoken = recallSpokenWordForObject(interaction.objectId);
         setSpeech(spoken ?? WORLD_ACTION_LABELS[interaction.actionId]);
         if (interactionSource === 'manual') {
-          // La interacción manual demorada altera el mundo, pero nunca entrena
-          // al cerebro con el efecto de una orden del usuario.
           suppressNextAutoReward = true;
-          previousDiscomfort = driveDiscomfort(engine.tick(0).drives);
+          previousDiscomfort = driveDiscomfort(after.drives);
         }
       }
-      const prefix = interactionSource === 'manual' ? 'Prueba manual' : 'Acción del cerebro';
-      const note = interactionSource === 'manual' ? ' No se enseña al cerebro con esta prueba.' : '';
+      const prefix = interactionSource === 'manual' ? 'Actividad guiada' : 'Acción del cerebro';
+      const note = '';
       worldFeedbackElement.textContent = `${prefix}: ${interaction.message}${note}`;
       recordActivity(interactionSource === 'manual' ? 'Resultado manual' : 'Resultado', interaction.message);
     }
