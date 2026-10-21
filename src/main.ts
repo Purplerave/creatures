@@ -311,6 +311,9 @@ for (const object of world.getSnapshot().objects) {
   const card = document.createElement('article');
   card.className = 'world-object';
   card.dataset.objectId = object.id;
+  card.setAttribute('role', 'button');
+  card.tabIndex = 0;
+  card.setAttribute('aria-label', `${object.name}: ${object.description}`);
 
   const heading = document.createElement('div');
   heading.className = 'world-object-heading';
@@ -348,9 +351,15 @@ for (const object of world.getSnapshot().objects) {
   state.append(status, uses);
 
   card.append(heading, description, action, state);
-  card.addEventListener('click', () => {
+  const activatePrimaryAction = (): void => {
     const primaryVerb = object.actions[0];
     if (primaryVerb) performWorldAction(primaryVerb, 'manual');
+  };
+  card.addEventListener('click', activatePrimaryAction);
+  card.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    activatePrimaryAction();
   });
   worldGridElement.append(card);
   worldObjectReadouts.set(object.id, { card, zone, status, uses });
