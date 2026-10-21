@@ -44,7 +44,7 @@ El vocabulario actual es asociativo y expresivo; permanece desacoplado de las en
 
 - Definir de forma visible y documentada cómo se descarta el exceso de tiempo tras una pausa larga.
 - Definir pausa, aceleración, pestaña inactiva y tiempo transcurrido.
-- Cubrir el ciclo navegador: jugar, guardar, recargar y recuperar cerebro, mundo y drives.
+- Cubrir el ciclo navegador: jugar, guardar, recargar y recuperar cerebro, mundo y drives; reiniciar el acumulador temporal y la lectura visual al restaurar.
 - Mantener migraciones explícitas y mensajes claros al importar datos inválidos.
 
 **Aceptación:** una misma duración simulada produce resultados equivalentes con distintos ritmos de render; un guardado restaurado continúa de forma reproducible.
