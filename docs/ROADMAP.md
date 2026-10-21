@@ -14,11 +14,11 @@ El vocabulario actual es asociativo y expresivo; permanece desacoplado de las en
 
 ### P0 — Completar la legibilidad del bucle de juego
 
-**Estado:** el hábitat ahora conserva las ocho decisiones, resultados y refuerzos más recientes, con origen temporal y una distinción explícita entre las acciones manuales y las de Nilo. Falta validar la comprensión con personas que no conocen el proyecto.
+**Estado:** el hábitat muestra la necesidad accionable prioritaria y conserva las ocho decisiones, resultados y refuerzos más recientes, con una distinción explícita entre acciones manuales y de Nilo. Las tarjetas se pueden activar con teclado y se respeta movimiento reducido. Falta validar la comprensión con personas que no conocen el proyecto.
 
 **Resultado:** una persona que abre la demo entiende qué necesita Nilo, qué eligió hacer y qué consecuencia tuvo.
 
-- Presentar de forma clara el estado de Nilo y su necesidad más urgente.
+- Validar con usuarios que la necesidad prioritaria (comida, descanso, juego, seguridad, energía o confort) coincida con lo que entienden de su estado.
 - Diferenciar visualmente necesidades, acciones autónomas, órdenes por clic, pruebas manuales y refuerzos.
 - Completar el registro de la cadena percepción → decisión → acción → consecuencia → recompensa, incluida la consecuencia de acciones que requieren desplazamiento.
 - Mantener un flujo guiado de cinco minutos que no exija conocimientos del panel técnico.
