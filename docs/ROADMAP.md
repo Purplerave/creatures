@@ -47,11 +47,13 @@ El vocabulario actual es asociativo y expresivo; permanece desacoplado de las en
 
 **Aceptación:** una misma duración simulada produce resultados equivalentes con distintos ritmos de render; un guardado restaurado continúa de forma reproducible.
 
-### P1 — Hacer accesibles los controles del hábitat
+### P1 — Completar accesibilidad de los controles del hábitat
+
+**Estado:** las tarjetas de objetos ya se pueden enfocar y activar con Enter/Espacio, con foco visible. Sigue pendiente la navegación y auditoría completa con tecnologías de asistencia.
 
 **Resultado:** las funciones principales se pueden usar sin ratón y el canvas tiene una alternativa comprensible.
 
-- Añadir controles de teclado con foco visible y una lista DOM de objetos y acciones.
+- Añadir navegación por teclado para el escenario y completar la alternativa DOM de los elementos visuales.
 - Etiquetar drives, estados y decisiones para tecnologías de asistencia.
 - Respetar movimiento reducido y revisar contraste en ambos temas.
 - Probar diseño táctil y tamaños de pantalla estrechos.
