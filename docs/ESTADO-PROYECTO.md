@@ -1,6 +1,6 @@
 # Creatures — estado del proyecto
 
-**Actualizado:** 21-oct-2026 · **Repo:** https://github.com/Purplerave/creatures · **Rama activa:** `arena/f7085e8d-creatures`
+**Actualizado:** 21-oct-2026 · **Repo:** https://github.com/Purplerave/creatures · **Base estable:** `main` (`04c61e1`, PR #6 y PR #7 fusionadas).
 
 ## Nota sobre historial reciente de `main`
 
