@@ -11,6 +11,7 @@ import type { ChemicalId, DriveId, DriveState } from './types';
 export interface RenderWorldObject {
   id: string;
   name: string;
+  zoneLabel: string;
   icon: string;
   position: { x: number; y: number };
   cooldownRemaining: number;
