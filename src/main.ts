@@ -684,9 +684,6 @@ function renderWorld(): void {
 
   const lastActionId = snapshot.lastInteraction?.actionId;
   const lastAction = actionSpace.find((action) => action.id === lastActionId);
-  const origin = lastActionId
-    ? lastWorldSource === 'manual' ? 'Prueba manual' : 'Cerebro'
-    : autonomousMode ? 'Cerebro' : 'Modo guiado';
   worldActionElement.textContent = lastActionId
     ? `Última actividad · ${lastAction?.name ?? WORLD_ACTION_LABELS[lastActionId]}`
     : 'Elige una actividad';
