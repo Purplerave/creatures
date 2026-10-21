@@ -202,7 +202,7 @@ describe('app — enseñanza manual', () => {
     const before = text('brain-stats');
     form.dispatchEvent(new window.Event('submit', { cancelable: true, bubbles: true }));
     expect(text('world-feedback')).toMatch(/^Prueba manual:/);
-    expect(text('world-action')).toMatch(/^Prueba manual · Descansar/);
+    expect(text('world-action')).toMatch(/^Tú elegiste · Descansar/);
     expect(text('world-feedback')).toMatch(/No se enseña al cerebro/);
     expect(text('brain-stats')).toBe(before);
 
