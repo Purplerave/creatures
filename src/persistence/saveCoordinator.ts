@@ -25,6 +25,11 @@ import { CreatureWorld } from '../world';
 /** Versión del sobre de partida completa. */
 export const CREATURES_SAVE_VERSION = 1;
 
+/** Máximo de texto JSON aceptado al importar una partida (5 MiB aprox.). */
+export const MAX_SAVE_JSON_LENGTH = 5 * 1024 * 1024;
+/** Longitud máxima para el nombre visible y el nombre del archivo exportado. */
+export const MAX_CREATURE_NAME_LENGTH = 32;
+
 /** Clave de almacenamiento local por defecto en navegador. */
 export const DEFAULT_STORAGE_KEY = 'creatures.save.v1';
 
@@ -119,8 +124,12 @@ export function serializeGameState(
   session: Pick<GameSessionBundle, 'genome' | 'engine' | 'brainModel' | 'vocabulary' | 'world'>,
   meta: SaveGameMeta,
 ): string {
-  if (!meta.creatureName || typeof meta.creatureName !== 'string') {
-    throw new RangeError('creatureName inválido al serializar la partida');
+  if (
+    typeof meta.creatureName !== 'string' ||
+    !meta.creatureName.trim() ||
+    meta.creatureName.trim().length > MAX_CREATURE_NAME_LENGTH
+  ) {
+    throw new RangeError(`creatureName inválido al serializar (1–${MAX_CREATURE_NAME_LENGTH} caracteres)`);
   }
   if (!Number.isFinite(meta.simTime) || meta.simTime < 0) {
     throw new RangeError(`simTime inválido al serializar: ${String(meta.simTime)}`);
@@ -163,6 +172,9 @@ export function restoreGameState(
   if (typeof json !== 'string') {
     throw new RangeError('El archivo de partida debe ser texto JSON');
   }
+  if (json.length > MAX_SAVE_JSON_LENGTH) {
+    throw new RangeError(`La partida supera el límite de ${MAX_SAVE_JSON_LENGTH / (1024 * 1024)} MiB`);
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
@@ -184,8 +196,12 @@ export function restoreGameState(
   if (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta)) {
     throw new RangeError('Faltan los metadatos de sesión válidos en la partida guardada');
   }
-  if (typeof rawMeta.creatureName !== 'string' || !rawMeta.creatureName.trim()) {
-    throw new RangeError('Nombre de criatura inválido en la partida guardada');
+  if (
+    typeof rawMeta.creatureName !== 'string' ||
+    !rawMeta.creatureName.trim() ||
+    rawMeta.creatureName.trim().length > MAX_CREATURE_NAME_LENGTH
+  ) {
+    throw new RangeError(`Nombre de criatura inválido (máximo ${MAX_CREATURE_NAME_LENGTH} caracteres)`);
   }
   if (typeof rawMeta.simTime !== 'number' || !Number.isFinite(rawMeta.simTime) || rawMeta.simTime < 0) {
     throw new RangeError('Tiempo simulado inválido en la partida guardada');
