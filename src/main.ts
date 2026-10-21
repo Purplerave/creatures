@@ -727,7 +727,7 @@ function teachWord(event: SubmitEvent): void {
 
 /** Ejecuta una acción contra el mundo (manual o cerebral). */
 function performWorldAction(actionId: string, source: 'brain' | 'manual'): void {
-  const requireProximity = source === 'brain' && spatialStrict;
+  const requireProximity = spatialStrict;
   const interaction = world.performAction(actionId, { requireProximity });
   lastWorldSource = source;
   if (interaction.applied && interaction.impulse) {
@@ -759,7 +759,7 @@ function onHabitatCanvasClick(event: MouseEvent): void {
   if (hit && hit.actions[0]) {
     performWorldAction(hit.actions[0], 'manual');
   } else {
-    world.moveCreatureTo(point);
+    world.walkCreatureTo(point);
     renderWorld();
   }
 }
@@ -1118,13 +1118,21 @@ function loop(now: number): void {
     const stepResult = world.advance(dt);
     if (stepResult.triggeredInteraction) {
       const interaction = stepResult.triggeredInteraction;
+      const interactionSource = lastWorldSource;
       if (interaction.applied && interaction.impulse) {
         engine.applyImpulse(interaction.impulse);
         const spoken = recallSpokenWordForObject(interaction.objectId);
         setSpeech(spoken ?? interaction.actionId);
+        if (interactionSource === 'manual') {
+          // La interacción manual demorada altera el mundo, pero nunca entrena
+          // al cerebro con el efecto de una orden del usuario.
+          suppressNextAutoReward = true;
+          previousDiscomfort = driveDiscomfort(engine.tick(0).drives);
+        }
       }
-      worldFeedbackElement.textContent = `Acción del cerebro: ${interaction.message}`;
-      recordActivity('Resultado', interaction.message);
+      const prefix = interactionSource === 'manual' ? 'Prueba manual' : 'Acción del cerebro';
+      worldFeedbackElement.textContent = `${prefix}: ${interaction.message}`;
+      recordActivity(interactionSource === 'manual' ? 'Resultado manual' : 'Resultado', interaction.message);
     }
 
     snapshot = engine.tick(dt);

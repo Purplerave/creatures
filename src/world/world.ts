@@ -17,7 +17,7 @@
 import type { BiochemicalImpulse } from '../contracts/types';
 
 /** Versión del esquema de serialización del mundo (Fase 5). */
-export const WORLD_SCHEMA_VERSION = 1;
+export const WORLD_SCHEMA_VERSION = 2;
 
 /** Velocidad base de desplazamiento en unidades normalizadas de hábitat por segundo. */
 export const DEFAULT_WALK_SPEED = 0.78;
@@ -119,6 +119,8 @@ interface SerializedWorldState {
     heading: -1 | 1;
     speed: number;
     targetObjectId: WorldObjectId | null;
+    /** Destino de una orden manual de movimiento (ausente en partidas schema v1). */
+    manualTargetPosition?: Vec2 | null;
     pendingActionId: WorldActionId | null;
     distanceTraveled: number;
   };
@@ -262,6 +264,7 @@ export class CreatureWorld {
   private heading: -1 | 1 = 1;
   private speed: number;
   private targetObjectId: WorldObjectId | null = null;
+  private manualTargetPosition: Vec2 | null = null;
   private pendingActionId: WorldActionId | null = null;
   private distanceTraveled = 0;
   private lastInteraction: WorldActionResult | null = null;
@@ -289,6 +292,7 @@ export class CreatureWorld {
     const definition = INTERACTIONS[action];
     const object = this.findObjectOrThrow(definition.objectId);
     this.targetObjectId = object.id;
+    this.manualTargetPosition = null;
     this.pendingActionId = action;
     if (object.position.x - this.position.x > 1e-4) this.heading = 1;
     else if (object.position.x - this.position.x < -1e-4) this.heading = -1;
@@ -302,6 +306,22 @@ export class CreatureWorld {
     }
     this.position = { x: clamp01(point.x), y: clamp01(point.y) };
     this.velocity = { x: 0, y: 0 };
+    this.targetObjectId = null;
+    this.manualTargetPosition = null;
+    this.pendingActionId = null;
+  }
+
+  /** Fija un destino libre para que Nilo camine hacia una posición del hábitat. */
+  walkCreatureTo(point: Vec2): void {
+    if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+      throw new RangeError('Coordenada inválida para walkCreatureTo');
+    }
+    const destination = { x: clamp01(point.x), y: clamp01(point.y) };
+    this.targetObjectId = null;
+    this.manualTargetPosition = destination;
+    this.pendingActionId = null;
+    if (destination.x - this.position.x > 1e-4) this.heading = 1;
+    else if (destination.x - this.position.x < -1e-4) this.heading = -1;
   }
 
   /** Detecta si un clic en coordenadas normalizadas `(0..1, 0..1)` cae sobre un objeto del mundo. */
@@ -337,6 +357,7 @@ export class CreatureWorld {
     let triggeredInteraction: WorldActionResult | null = null;
 
     if (this.targetObjectId) {
+      this.manualTargetPosition = null;
       const target = this.findObjectOrThrow(this.targetObjectId);
       const targetStandSpot = this.standPositionForObject(target);
       const dx = targetStandSpot.x - this.position.x;
@@ -370,6 +391,27 @@ export class CreatureWorld {
         this.pendingActionId = null;
         triggeredInteraction = this.executeImmediateInteraction(actionToRun);
       }
+    } else if (this.manualTargetPosition) {
+      const dx = this.manualTargetPosition.x - this.position.x;
+      const dy = this.manualTargetPosition.y - this.position.y;
+      const remaining = Math.hypot(dx, dy);
+      if (Math.abs(dx) > 1e-4) this.heading = dx >= 0 ? 1 : -1;
+      if (dtSeconds > 0 && remaining > 1e-6) {
+        const step = Math.min(remaining, this.speed * dtSeconds);
+        const ux = dx / remaining;
+        const uy = dy / remaining;
+        this.position = {
+          x: clamp01(this.position.x + ux * step),
+          y: clamp01(this.position.y + uy * step),
+        };
+        this.velocity = step < remaining ? { x: ux * this.speed, y: uy * this.speed } : { x: 0, y: 0 };
+        this.distanceTraveled += step;
+        distanceDelta = step;
+        moved = step > 0;
+      } else {
+        this.velocity = { x: 0, y: 0 };
+      }
+      arrived = remaining <= this.speed * dtSeconds + 1e-6;
     } else {
       this.velocity = { x: 0, y: 0 };
     }
@@ -389,6 +431,7 @@ export class CreatureWorld {
     const object = this.findObjectOrThrow(definition.objectId);
 
     this.targetObjectId = object.id;
+    this.manualTargetPosition = null;
     const dx = object.position.x - this.position.x;
     if (Math.abs(dx) > 1e-4) this.heading = dx >= 0 ? 1 : -1;
 
@@ -418,7 +461,12 @@ export class CreatureWorld {
   getSnapshot(): WorldSnapshot {
     const target = this.targetObjectId ? this.findObjectOrThrow(this.targetObjectId) : null;
     const targetStand = target ? this.standPositionForObject(target) : null;
-    const distToTarget = target ? distance2D(this.position, target.position) : 0;
+    const visibleTarget = targetStand ?? this.manualTargetPosition;
+    const distToTarget = target
+      ? distance2D(this.position, target.position)
+      : this.manualTargetPosition
+        ? distance2D(this.position, this.manualTargetPosition)
+        : 0;
 
     return {
       objects: WORLD_OBJECTS.map((object) => {
@@ -442,10 +490,12 @@ export class CreatureWorld {
         heading: this.heading,
         speed: this.speed,
         targetObjectId: this.targetObjectId,
-        targetPosition: targetStand ? copyVec2(targetStand) : null,
+        targetPosition: visibleTarget ? copyVec2(visibleTarget) : null,
         pendingActionId: this.pendingActionId,
         distanceToTarget: distToTarget,
-        arrived: target ? distToTarget <= target.interactionRadius + 1e-6 : false,
+        arrived: target
+          ? distToTarget <= target.interactionRadius + 1e-6
+          : this.manualTargetPosition !== null && distToTarget <= 1e-6,
         distanceTraveled: this.distanceTraveled,
       },
       lastInteraction: copyResult(this.lastInteraction),
@@ -471,6 +521,7 @@ export class CreatureWorld {
         heading: this.heading,
         speed: this.speed,
         targetObjectId: this.targetObjectId,
+        manualTargetPosition: this.manualTargetPosition ? copyVec2(this.manualTargetPosition) : null,
         pendingActionId: this.pendingActionId,
         distanceTraveled: this.distanceTraveled,
       },
@@ -492,9 +543,9 @@ export class CreatureWorld {
       throw new RangeError('Mundo serializado debe ser un objeto JSON');
     }
     const candidate = parsed as Partial<SerializedWorldState>;
-    if (candidate.schemaVersion !== WORLD_SCHEMA_VERSION) {
+    if (candidate.schemaVersion !== 1 && candidate.schemaVersion !== WORLD_SCHEMA_VERSION) {
       throw new RangeError(
-        `schemaVersion de mundo no soportada: ${String(candidate.schemaVersion)} (soportada: ${WORLD_SCHEMA_VERSION})`,
+        `schemaVersion de mundo no soportada: ${String(candidate.schemaVersion)} (soportadas: 1 y ${WORLD_SCHEMA_VERSION})`,
       );
     }
     if (typeof candidate.objects !== 'object' || candidate.objects === null) {
@@ -543,6 +594,20 @@ export class CreatureWorld {
     if (rawCreature.pendingActionId !== null) {
       this.validateActionId(rawCreature.pendingActionId);
     }
+    const rawManualTarget = rawCreature.manualTargetPosition;
+    if (candidate.schemaVersion === WORLD_SCHEMA_VERSION && !Object.hasOwn(rawCreature, 'manualTargetPosition')) {
+      throw new RangeError('manualTargetPosition ausente en mundo schema v2');
+    }
+    if (rawManualTarget !== undefined && rawManualTarget !== null) {
+      if (
+        typeof rawManualTarget !== 'object' ||
+        !Number.isFinite(rawManualTarget.x) ||
+        !Number.isFinite(rawManualTarget.y) ||
+        rawCreature.targetObjectId !== null
+      ) {
+        throw new RangeError('manualTargetPosition inválida o incompatible con un destino de objeto');
+      }
+    }
     if (
       typeof rawCreature.distanceTraveled !== 'number' ||
       !Number.isFinite(rawCreature.distanceTraveled) ||
@@ -558,6 +623,10 @@ export class CreatureWorld {
     this.heading = rawCreature.heading;
     this.speed = rawCreature.speed;
     this.targetObjectId = rawCreature.targetObjectId;
+    this.manualTargetPosition = rawManualTarget ? {
+      x: clamp01(rawManualTarget.x),
+      y: clamp01(rawManualTarget.y),
+    } : null;
     this.pendingActionId = rawCreature.pendingActionId;
     this.distanceTraveled = rawCreature.distanceTraveled;
     this.lastInteraction = copyResult(candidate.lastInteraction ?? null);
