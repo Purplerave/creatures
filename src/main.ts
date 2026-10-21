@@ -828,6 +828,8 @@ function applyRestoredSession(restored: ReturnType<typeof restoreGameState>, sta
   creatureName = restored.meta.creatureName;
   simTime = restored.meta.simTime;
   frame = restored.meta.frame;
+  simulationAccumulator = 0;
+  lastSnapshot = restored.engine.tick(0);
   activityLog?.replaceChildren();
   recordActivity('Sesión', statusText);
   autoReward = restored.meta.autoReward;
@@ -843,6 +845,7 @@ function applyRestoredSession(restored: ReturnType<typeof restoreGameState>, sta
   suppressNextAutoReward = true;
 
   const snap = engine.tick(0);
+  lastSnapshot = snap;
   previousDiscomfort = driveDiscomfort(snap.drives);
   if (!brain.getDebugState().hasThink) {
     lastBrainOutput = brain.think(brainInputs(snap, frame));
