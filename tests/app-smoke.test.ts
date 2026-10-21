@@ -173,6 +173,10 @@ describe('app — enseñanza manual', () => {
   });
 
   it('probar un verbo activa un objeto sin acreditar esa prueba al cerebro', () => {
+    const autonomy = document.getElementById('autonomy-toggle');
+    if (!(autonomy instanceof HTMLInputElement)) throw new Error('Falta el interruptor #autonomy-toggle');
+    autonomy.checked = false;
+    autonomy.dispatchEvent(new window.Event('change'));
     const form = document.getElementById('world-action-form');
     const select = document.getElementById('world-action-select');
     if (!(form instanceof HTMLFormElement) || !(select instanceof HTMLSelectElement)) {
