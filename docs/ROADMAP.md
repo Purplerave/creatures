@@ -20,6 +20,7 @@ El vocabulario actual es asociativo y expresivo; permanece desacoplado de las en
 
 - Validar con usuarios que la necesidad prioritaria (comida, descanso, juego, seguridad, energía o confort) coincida con lo que entienden de su estado.
 - Diferenciar visualmente necesidades, acciones autónomas, órdenes por clic, pruebas manuales y refuerzos.
+- Exponer pausa con `P` y velocidades `1×`, `3×` y `8×` con `1`, `3` y `8`; ignorar los atajos cuando el foco está en un control o campo editable.
 - Completar el registro de la cadena percepción → decisión → acción → consecuencia → recompensa, incluida la consecuencia de acciones que requieren desplazamiento.
 - Mantener un flujo guiado de cinco minutos que no exija conocimientos del panel técnico.
 
