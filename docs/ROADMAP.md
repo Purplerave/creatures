@@ -34,11 +34,13 @@ El vocabulario actual es asociativo y expresivo; permanece desacoplado de las en
 
 **Aceptación:** el resultado se reproduce en varias semillas y escenarios; se informan también los casos donde el aprendizaje no mejora la conducta.
 
-### P1 — Robustecer el reloj y el guardado
+### P1 — Verificar el reloj y robustecer el guardado
+
+**Estado:** el runtime ya avanza la simulación en pasos fijos de 1/60 s y limita el tiempo acumulado tras pausas largas. Falta validar esa semántica en escenarios de pausa, cambio de velocidad y pestaña inactiva.
 
 **Resultado:** la simulación conserva su comportamiento al cambiar velocidad, FPS o al restaurar una partida.
 
-- Separar paso fijo de simulación y frecuencia de renderizado.
+- Definir de forma visible y documentada cómo se descarta el exceso de tiempo tras una pausa larga.
 - Definir pausa, aceleración, pestaña inactiva y tiempo transcurrido.
 - Cubrir el ciclo navegador: jugar, guardar, recargar y recuperar cerebro, mundo y drives.
 - Mantener migraciones explícitas y mensajes claros al importar datos inválidos.
