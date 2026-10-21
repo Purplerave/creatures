@@ -1014,10 +1014,46 @@ function onResetGameClick(): void {
   }
 }
 
+let lastRunningSpeed = 1;
+
+function onSpeedShortcut(event: KeyboardEvent): void {
+  if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || target.matches('input, textarea, select, button, a, [role="button"]'))
+  ) return;
+
+  const key = event.key.toLowerCase();
+  const speedByKey: Record<string, number> = { '1': 1, '3': 3, '8': 8 };
+  if (key === 'p') {
+    event.preventDefault();
+    const pauseButton = speedButtons.find((candidate) => Number(candidate.dataset.speed) === 0);
+    if (timeScale > 0) {
+      lastRunningSpeed = timeScale;
+      pauseButton?.click();
+    } else {
+      const resumeButton = speedButtons.find((candidate) => Number(candidate.dataset.speed) === lastRunningSpeed);
+      (resumeButton ?? speedButtons.find((candidate) => Number(candidate.dataset.speed) === 1))?.click();
+    }
+    return;
+  }
+  const speed = speedByKey[key];
+  if (speed === undefined) return;
+  const button = speedButtons.find((candidate) => Number(candidate.dataset.speed) === speed);
+  if (button) {
+    event.preventDefault();
+    button.click();
+  }
+}
+
+window.addEventListener('keydown', onSpeedShortcut);
+
 for (const btn of speedButtons) {
   btn.addEventListener('click', () => {
     const nextSpeed = Number(btn.dataset.speed ?? '1');
     if (!Number.isFinite(nextSpeed) || nextSpeed < 0) return;
+    if (nextSpeed > 0) lastRunningSpeed = nextSpeed;
     timeScale = nextSpeed;
     for (const candidate of speedButtons) {
       candidate.setAttribute('aria-pressed', String(candidate === btn));
