@@ -339,6 +339,7 @@
         color: var(--muted);
         font: 600 9px ui-monospace, SFMono-Regular, Menlo, monospace;
       }
+      .world-object-range { display: block; margin-top: 4px; color: var(--teal-dark); font-size: 9px; font-weight: 700; }
       .world-object-description {
         margin: 6px 0 7px;
         color: var(--muted);
@@ -362,6 +363,13 @@
       .world-object-status { color: var(--teal-dark); }
       .world-object[data-ready="false"] .world-object-status { color: #927039; }
       .world-object-uses { color: var(--muted); }
+      .habitat-challenges { margin: 10px 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px 5px 10px 5px; background: color-mix(in srgb, var(--amber) 8%, var(--surface)); }
+      .habitat-challenges-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+      .habitat-challenges-heading strong { font-size: 11px; }
+      .habitat-challenges-heading output { color: var(--muted); font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .habitat-challenges-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+      .habitat-challenge { padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: 9px; }
+      .habitat-challenge[data-complete="true"] { border-color: color-mix(in srgb, var(--teal) 50%, var(--line)); color: var(--teal-dark); background: color-mix(in srgb, var(--teal) 10%, var(--surface)); }
       .world-action-form {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
@@ -917,6 +925,7 @@
               </div>
               <output id="world-action" class="drive-count" aria-label="Origen y verbo de la última acción">Cerebro · sin acción</output>
             </div>
+            <section id="habitat-challenges" class="habitat-challenges" aria-label="Retos del hábitat"></section>
             <div id="world-grid" class="world-grid" aria-label="Objetos disponibles en el mundo"></div>
             <form id="world-action-form" class="world-action-form">
               <label class="world-action-label" for="world-action-select">
@@ -926,7 +935,11 @@
                   <option value="acurrucarse">Acurrucarse · nido</option>
                   <option value="observar">Observar · luz suave</option>
                   <option value="explorar">Explorar · pelota</option>
-                  <option value="buscar">Buscar estímulo · comedero</option>
+                  <option value="buscar">Buscar comida · comedero</option>
+                  <option value="atravesar">Atravesar el túnel · túnel</option>
+                  <option value="mirar">Mirar el jardín · ventana</option>
+                  <option value="tocar">Tocar el xilófono · xilófono</option>
+                  <option value="abrazar">Abrazar el peluche · peluche</option>
                 </select>
               </label>
               <button class="teach-button" type="submit">Probar acción</button>
