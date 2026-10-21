@@ -100,7 +100,13 @@ describe('app — arranque', () => {
     runFrames(3);
     expect(document.querySelectorAll('#drive-grid .drive-card')).toHaveLength(8);
     expect(document.querySelectorAll('#brain-action-grid .brain-action-row')).toHaveLength(DEFAULT_ACTIONS.length);
-    expect(document.querySelectorAll('#world-grid .world-object')).toHaveLength(4);
+    const objects = Array.from(document.querySelectorAll<HTMLElement>('#world-grid .world-object'));
+    expect(objects).toHaveLength(8);
+    expect(objects.map((object) => object.querySelector('h3')?.textContent)).toEqual([
+      'Nido mullido', 'Comedero', 'Pelota', 'Luz suave', 'Túnel de tela',
+      'Ventana al jardín', 'Xilófono de madera', 'Peluche compañero',
+    ]);
+    expect(document.querySelectorAll('#habitat-challenges .habitat-challenge')).toHaveLength(4);
     expect(document.getElementById('world-action-form')).not.toBeNull();
     expect(text('brain-decision')).not.toBe('');
     expect(text('brain-epsilon-value')).toMatch(/^\d+%$/);
