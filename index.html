@@ -50,7 +50,7 @@
         line-height: 1.45;
       }
       .shell {
-        width: min(1320px, 100%);
+        width: min(1840px, 100%);
         margin: 0 auto;
         padding: clamp(16px, 2.4vw, 28px);
       }
@@ -136,7 +136,7 @@
 
       .workspace-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+        grid-template-columns: minmax(0, 1.55fr) minmax(360px, 0.75fr);
         align-items: start;
         gap: 16px;
       }
@@ -174,8 +174,7 @@
         content: "";
         opacity: 0.3;
         pointer-events: none;
-        background-image: radial-gradient(circle, var(--teal) 0 1.5px, transparent 2px);
-        background-size: 42px 42px;
+        background-image: linear-gradient(180deg, color-mix(in srgb, var(--surface) 8%, transparent), transparent 52%);
         mask-image: linear-gradient(to bottom, #000, transparent 55%);
       }
       .habitat-header {
@@ -245,9 +244,9 @@
         position: relative;
         z-index: 1;
         width: 100%;
-        min-height: 360px;
-        max-height: 530px;
-        aspect-ratio: 1.32 / 1;
+        min-height: 520px;
+        max-height: 760px;
+        aspect-ratio: 1.9 / 1;
       }
       #app {
         position: absolute;
@@ -258,15 +257,12 @@
         background: transparent;
         cursor: pointer;
       }
-      .habitat-caption {
-        position: relative;
-        z-index: 1;
-        margin: 0;
-        padding: 0 20px 15px;
-        color: var(--muted);
-        font-size: 11px;
-        text-align: center;
-      }
+      .habitat-caption { position: relative; z-index: 1; display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 18px; margin: 0; padding: 0 20px 15px; color: var(--muted); font-size: 11px; text-align: center; }
+      .habitat-caption span { display: inline-flex; align-items: center; gap: 6px; }
+      .legend-halo { width: 10px; height: 10px; border: 2px solid var(--teal); border-radius: 50%; }
+      .legend-route { width: 20px; border-top: 2px dashed var(--teal); }
+      .autonomy-control { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: 11px; font-weight: 700; }
+      .autonomy-control input { width: 16px; height: 16px; accent-color: var(--teal); }
 
       .world-panel,
       .drives-panel,
@@ -348,12 +344,14 @@
         color: var(--muted);
         font-size: 10.5px;
       }
-      .world-object-actions {
-        margin: 0 0 8px;
-        color: var(--teal-dark);
-        font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace;
-        text-transform: uppercase;
+      .world-object-actions { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
+      .world-object-action-button {
+        min-height: 30px; padding: 5px 8px; border: 1px solid color-mix(in srgb, var(--teal) 38%, var(--line));
+        border-radius: 999px; color: var(--teal-dark); background: var(--surface);
+        font: 700 10px ui-sans-serif, system-ui, sans-serif; cursor: pointer;
       }
+      .world-object-action-button:hover { background: color-mix(in srgb, var(--teal) 12%, var(--surface)); }
+      .world-object-action-button:focus-visible { outline: 3px solid color-mix(in srgb, var(--teal) 35%, transparent); outline-offset: 2px; }
       .world-object-state {
         display: flex;
         align-items: baseline;
@@ -882,14 +880,21 @@
                 <p id="creature-subtitle" class="creature-subtitle">GEN. 01 · DÍA 01 · EMBRIÓN</p>
                 <p id="need-status" class="need-status" aria-label="Necesidad principal">Necesidades tranquilas</p>
               </div>
-              <output id="mood" class="mood-badge" data-mood="happy" aria-live="polite">Feliz</output>
+              <div class="header-meta">
+                <label class="autonomy-control" for="autonomy-toggle"><input id="autonomy-toggle" type="checkbox" /> Nilo decide por sí mismo</label>
+                <output id="mood" class="mood-badge" data-mood="happy" aria-live="polite">Feliz</output>
+              </div>
             </header>
             <div class="creature-stage">
               <canvas id="app" width="800" height="600" role="img" aria-label="Nilo, una criatura virtual dibujada en Canvas.">
                 Tu navegador necesita soporte para Canvas 2D y Path2D para mostrar a Nilo.
               </canvas>
             </div>
-            <p class="habitat-caption">Haz clic directamente sobre cualquier objeto del escenario o usa el panel inferior para guiar e interactuar con Nilo.</p>
+            <p class="habitat-caption" aria-label="Leyenda del hábitat">
+              <span><i class="legend-halo" aria-hidden="true"></i> Halo: zona de interacción</span>
+              <span><i class="legend-route" aria-hidden="true"></i> Línea: camino y destino</span>
+              <span>Haz clic en el suelo para guiar a Nilo</span>
+            </p>
           </section>
 
           <section class="drives-panel" aria-labelledby="drives-title">
@@ -928,12 +933,12 @@
             </form>
             <div class="world-mode-row">
               <label class="brain-toggle" for="spatial-strict">
-                <input id="spatial-strict" type="checkbox" />
+                <input id="spatial-strict" type="checkbox" checked />
                 Exigir cercanía física al objeto antes de aplicar impulso
               </label>
               <output id="world-coords" class="drive-count">Pos (0.50, 0.66)</output>
             </div>
-            <p id="world-feedback" class="world-feedback" role="status" aria-live="polite">El cerebro ejecutará su primera acción al iniciar.</p>
+            <p id="world-feedback" class="world-feedback" role="status" aria-live="polite">Modo guiado: haz clic en el suelo o elige una acción para que Nilo vaya allí.</p>
             <section class="activity-panel" aria-labelledby="activity-title">
               <h3 id="activity-title">Actividad reciente</h3>
               <ol id="activity-log" class="activity-log" aria-label="Últimas decisiones, resultados y refuerzos de Nilo">
