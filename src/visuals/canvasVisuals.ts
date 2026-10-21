@@ -273,7 +273,7 @@ export class CanvasVisuals implements IVisuals {
       spatial.heading,
     );
 
-    for (const obj of frontObjects) this.drawWorldObject(context, obj, spatial, time);
+    for (const obj of frontObjects) this.drawWorldObject(context, obj, time);
 
     if (spatial.speech) {
       this.drawSpeechBubble(context, centerX, centerY - 195 * scale, spatial.speech);
