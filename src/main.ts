@@ -359,7 +359,7 @@ for (const object of world.getSnapshot().objects) {
   };
   card.addEventListener('click', activatePrimaryAction);
   card.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (event.repeat || (event.key !== 'Enter' && event.key !== ' ')) return;
     event.preventDefault();
     activatePrimaryAction();
   });
