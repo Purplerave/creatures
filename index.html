@@ -381,6 +381,34 @@
         color: var(--muted);
         font-size: 11px;
       }
+      .activity-log {
+        display: grid;
+        gap: 6px;
+        max-height: 190px;
+        overflow: auto;
+        margin: 10px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .activity-log li {
+        display: grid;
+        grid-template-columns: 42px 108px minmax(0, 1fr);
+        gap: 8px;
+        align-items: baseline;
+        padding: 7px 9px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .activity-log time { font: 600 9px ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .activity-log strong { color: var(--ink); }
+      .activity-empty { color: var(--muted); font-size: 10px; }
+      @media (max-width: 560px) {
+        .activity-log li { grid-template-columns: 38px minmax(0, 1fr); }
+        .activity-log li strong { grid-column: 2; }
+        .activity-log li span { grid-column: 2; }
+      }
       .world-note { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
 
       .drive-grid {
@@ -878,6 +906,12 @@
               <output id="world-coords" class="drive-count">Pos (0.50, 0.66)</output>
             </div>
             <p id="world-feedback" class="world-feedback" role="status" aria-live="polite">El cerebro ejecutará su primera acción al iniciar.</p>
+            <section class="activity-panel" aria-labelledby="activity-title">
+              <h3 id="activity-title">Actividad reciente</h3>
+              <ol id="activity-log" class="activity-log" aria-label="Últimas decisiones, resultados y refuerzos de Nilo">
+                <li class="activity-empty">Todavía no hay actividad.</li>
+              </ol>
+            </section>
             <p class="world-note">Las pruebas manuales no entrenan al cerebro. En modo espacial estricto, Nilo camina hasta entrar en el radio del objeto antes de recibir el impulso.</p>
           </section>
         </div>
