@@ -128,6 +128,9 @@ export function serializeGameState(
   if (!Number.isInteger(meta.frame) || meta.frame < 0) {
     throw new RangeError(`frame inválido al serializar: ${String(meta.frame)}`);
   }
+  if (typeof meta.autoReward !== 'boolean' || typeof meta.spatialStrict !== 'boolean') {
+    throw new RangeError('autoReward y spatialStrict deben ser booleanos al serializar la partida');
+  }
 
   const envelope: SaveEnvelope = {
     saveVersion: CREATURES_SAVE_VERSION,
@@ -178,8 +181,8 @@ export function restoreGameState(
   }
 
   const rawMeta = candidate.meta;
-  if (!rawMeta || typeof rawMeta !== 'object') {
-    throw new RangeError('Faltan los metadatos de sesión en la partida guardada');
+  if (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta)) {
+    throw new RangeError('Faltan los metadatos de sesión válidos en la partida guardada');
   }
   if (typeof rawMeta.creatureName !== 'string' || !rawMeta.creatureName.trim()) {
     throw new RangeError('Nombre de criatura inválido en la partida guardada');
@@ -190,10 +193,18 @@ export function restoreGameState(
   if (typeof rawMeta.frame !== 'number' || !Number.isInteger(rawMeta.frame) || rawMeta.frame < 0) {
     throw new RangeError('Contador de fotogramas inválido en la partida guardada');
   }
+  if (typeof rawMeta.autoReward !== 'boolean' || typeof rawMeta.spatialStrict !== 'boolean') {
+    throw new RangeError('Las opciones de sesión guardadas deben ser booleanas');
+  }
 
   const rawModules = candidate.modules;
-  if (!rawModules || typeof rawModules !== 'object') {
+  if (!rawModules || typeof rawModules !== 'object' || Array.isArray(rawModules)) {
     throw new RangeError('Faltan los módulos serializados en la partida guardada');
+  }
+  for (const key of ['genome', 'biochem', 'brain', 'vocabulary', 'world'] as const) {
+    if (typeof rawModules[key] !== 'string') {
+      throw new RangeError(`Módulo ${key} inválido en la partida guardada`);
+    }
   }
 
   // Construcción en cuarentena: si cualquier deserialize falla, nada vivo cambia.
@@ -245,8 +256,8 @@ export function restoreGameState(
         creatureName: rawMeta.creatureName.trim(),
         simTime: rawMeta.simTime,
         frame: rawMeta.frame,
-        autoReward: Boolean(rawMeta.autoReward),
-        spatialStrict: Boolean(rawMeta.spatialStrict),
+        autoReward: rawMeta.autoReward,
+        spatialStrict: rawMeta.spatialStrict,
       },
     };
   } catch (error) {
