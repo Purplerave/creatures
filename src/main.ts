@@ -953,6 +953,11 @@ function onImportJsonChange(event: Event): void {
   const input = event.target as HTMLInputElement | null;
   const file = input?.files?.[0];
   if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    if (persistenceFeedback) persistenceFeedback.textContent = 'El archivo supera el límite de importación de 5 MiB.';
+    input.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => {
     try {
