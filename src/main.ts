@@ -829,7 +829,6 @@ function applyRestoredSession(restored: ReturnType<typeof restoreGameState>, sta
   simTime = restored.meta.simTime;
   frame = restored.meta.frame;
   simulationAccumulator = 0;
-  lastSnapshot = restored.engine.tick(0);
   activityLog?.replaceChildren();
   recordActivity('Sesión', statusText);
   autoReward = restored.meta.autoReward;
