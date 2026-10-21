@@ -290,6 +290,10 @@
         background: color-mix(in srgb, var(--surface-soft) 43%, var(--surface));
         transition: border-color 0.2s, background 0.2s;
       }
+      .world-object:focus-visible {
+        outline: 3px solid var(--teal);
+        outline-offset: 2px;
+      }
       .world-object[data-ready="false"] { border-color: color-mix(in srgb, var(--amber) 48%, var(--line)); }
       .world-object[data-in-range="true"] {
         border-color: var(--teal);
