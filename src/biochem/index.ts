@@ -1,8 +1,13 @@
 /**
- * API pública del motor de bioquímica (Fase 0).
+ * API pública del motor de bioquímica (Fase 0 + serialización Fase 5).
  * Importar desde '../biochem' o './biochem'.
  */
-export { BiochemEngine, type BiochemEngineOptions } from './engine';
+export {
+  BiochemEngine,
+  BIOCHEM_SCHEMA_VERSION,
+  type BiochemEngineOptions,
+  type SerializedBiochemState,
+} from './engine';
 export {
   registerDrive,
   getDriveDef,

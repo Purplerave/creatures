@@ -1,10 +1,18 @@
 /**
- * Render de la criatura en Canvas 2D.
+ * Render de la criatura y su hábitat espacial en Canvas 2D.
  *
- * Los datos de Path2D se han portado literalmente de los `d` del SVG de
- * `bichito.html`. Este módulo sólo lee snapshots: no conoce ni muta el motor.
+ * Los datos de Path2D de Nilo se han portado literalmente de los `d` del SVG de
+ * `bichito.html`. Cuando `RenderState.world` está presente (Fase 4 espacial),
+ * dibuja también los objetos del mundo ordenados por profundidad (eje Y), la
+ * guía de ruta hacia el objetivo, el ciclo procedural de zancada al caminar y
+ * el bocadillo expresivo. Este módulo sólo lee snapshots: nunca toca el motor.
  */
-import type { IVisuals, RenderState } from '../contracts/ivisuals';
+import type {
+  IVisuals,
+  RenderState,
+  RenderWorldObject,
+  SpatialRenderState,
+} from '../contracts/ivisuals';
 import type { DriveId, DriveState } from '../contracts/types';
 
 export type CreatureMood = 'happy' | 'sad' | 'sleepy' | 'excited';
@@ -182,6 +190,18 @@ export class CanvasVisuals implements IVisuals {
     this.resizeCanvas();
   }
 
+  /** Convierte un clic de pantalla (`clientX`, `clientY`) a coordenadas normalizadas `(0..1)`. */
+  screenToWorld(clientX: number, clientY: number): { x: number; y: number } | null {
+    const canvas = this.canvas;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    return {
+      x: Math.min(1, Math.max(0, (clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (clientY - rect.top) / rect.height)),
+    };
+  }
+
   render(state: RenderState): void {
     const { canvas, context, paths } = this;
     if (!canvas || !context || !paths) return;
@@ -199,37 +219,64 @@ export class CanvasVisuals implements IVisuals {
     const time = normalizedTime(state.simTime);
     const breath = 0.5 - 0.5 * Math.cos((FULL_TURN * time) / 3.6);
     const hop = mood === 'excited' ? hopAmount(time) : 0;
-    const scale = (Math.min(this.width, this.height) / VIEWBOX_SIZE) * 0.92;
-    const centerX = this.width / 2;
-    const centerY = this.height / 2 + 2;
 
     context.clearRect(0, 0, this.width, this.height);
-    context.save();
-    context.translate(centerX, centerY);
-    context.scale(scale, scale);
-    context.translate(-VIEWBOX_SIZE / 2, -VIEWBOX_SIZE / 2);
 
-    // La sombra permanece en el suelo y se difumina visualmente al saltar.
-    context.save();
-    context.globalAlpha = 0.18 - hop * 0.08;
-    context.fillStyle = '#164d42';
-    context.shadowColor = 'rgba(22, 77, 66, 0.24)';
-    context.shadowBlur = 12;
-    context.beginPath();
-    context.ellipse(250, 442, 132, 24, 0, 0, FULL_TURN);
-    context.fill();
-    context.restore();
+    const spatial = state.world;
+    if (!spatial) {
+      // Modo retrato clásico (100 % compatible con L1 y tests unitarios).
+      const scale = (Math.min(this.width, this.height) / VIEWBOX_SIZE) * 0.92;
+      this.drawPositionedCreature(
+        context,
+        paths,
+        mood,
+        time,
+        breath,
+        hop,
+        this.width / 2,
+        this.height / 2 + 2,
+        scale,
+        0,
+        1,
+      );
+      return;
+    }
 
-    const tilt = mood === 'sad' ? 0.018 : mood === 'excited' ? -0.04 * hop : 0;
-    const breathingScale = 1 + 0.012 * breath;
-    context.translate(0, -5 * breath - 28 * hop);
-    context.translate(250, 420);
-    context.rotate(tilt);
-    context.scale(breathingScale, 1 + 0.008 * breath);
-    context.translate(-250, -420);
+    // Modo hábitat espacial (Fase 4): orden por profundidad y escala proporcionada.
+    this.drawNavigationGuide(context, spatial, time);
 
-    this.drawCreature(context, paths, mood, time);
-    context.restore();
+    const backObjects = spatial.objects.filter((obj) => obj.position.y <= spatial.creaturePosition.y);
+    const frontObjects = spatial.objects.filter((obj) => obj.position.y > spatial.creaturePosition.y);
+
+    for (const obj of backObjects) this.drawWorldObject(context, obj, spatial, time);
+
+    const speedMag = Math.hypot(spatial.creatureVelocity.x, spatial.creatureVelocity.y);
+    const walkAmount = Math.min(1, speedMag / 0.65);
+    const depthScale = 0.44 + 0.14 * spatial.creaturePosition.y;
+    const scale = (Math.min(this.width, this.height) / VIEWBOX_SIZE) * depthScale;
+    const centerX = spatial.creaturePosition.x * this.width;
+    const footOffset = 185 * scale;
+    const centerY = spatial.creaturePosition.y * this.height - footOffset * 0.68;
+
+    this.drawPositionedCreature(
+      context,
+      paths,
+      mood,
+      time,
+      breath,
+      hop,
+      centerX,
+      centerY,
+      scale,
+      walkAmount,
+      spatial.heading,
+    );
+
+    for (const obj of frontObjects) this.drawWorldObject(context, obj, spatial, time);
+
+    if (spatial.speech) {
+      this.drawSpeechBubble(context, centerX, centerY - 195 * scale, spatial.speech);
+    }
   }
 
   unmount(): void {
@@ -247,6 +294,263 @@ export class CanvasVisuals implements IVisuals {
     this.paths = null;
     this.width = 0;
     this.height = 0;
+  }
+
+  private drawPositionedCreature(
+    context: CanvasRenderingContext2D,
+    paths: CreaturePaths,
+    mood: CreatureMood,
+    time: number,
+    breath: number,
+    hop: number,
+    centerX: number,
+    centerY: number,
+    scale: number,
+    walkAmount: number,
+    heading: -1 | 1,
+  ): void {
+    const stride = walkAmount > 0.02 ? Math.sin(FULL_TURN * time * 3.1) * walkAmount : 0;
+    const walkBob = walkAmount > 0.02 ? Math.abs(Math.sin(FULL_TURN * time * 3.1)) * 9 * walkAmount : 0;
+
+    context.save();
+    context.translate(centerX, centerY);
+    context.scale(scale, scale);
+    context.translate(-VIEWBOX_SIZE / 2, -VIEWBOX_SIZE / 2);
+
+    // Sombra proyectada en el suelo.
+    context.save();
+    context.globalAlpha = 0.18 - hop * 0.08 - walkAmount * 0.03;
+    context.fillStyle = '#164d42';
+    context.shadowColor = 'rgba(22, 77, 66, 0.24)';
+    context.shadowBlur = 12;
+    context.beginPath();
+    context.ellipse(250, 442, 132, 24, 0, 0, FULL_TURN);
+    context.fill();
+    context.restore();
+
+    const walkLean = walkAmount * 0.045 * heading;
+    const tilt =
+      (mood === 'sad' ? 0.018 : mood === 'excited' ? -0.04 * hop : 0) + walkLean;
+    const breathingScale = 1 + 0.012 * breath;
+    context.translate(0, -5 * breath - 28 * hop - walkBob);
+    context.translate(250, 420);
+    context.rotate(tilt);
+    context.scale(breathingScale, 1 + 0.008 * breath);
+    context.translate(-250, -420);
+
+    this.drawCreature(context, paths, mood, time, stride, heading);
+    context.restore();
+  }
+
+  private drawNavigationGuide(
+    context: CanvasRenderingContext2D,
+    spatial: SpatialRenderState,
+    time: number,
+  ): void {
+    if (!spatial.targetObjectId) return;
+    const target = spatial.objects.find((item) => item.id === spatial.targetObjectId);
+    if (!target) return;
+
+    const startX = spatial.creaturePosition.x * this.width;
+    const startY = spatial.creaturePosition.y * this.height;
+    const endX = target.position.x * this.width;
+    const endY = Math.max(0.58, target.position.y) * this.height;
+    const dist = Math.hypot(endX - startX, endY - startY);
+    if (dist < 14) return;
+
+    const steps = Math.min(8, Math.max(3, Math.floor(dist / 36)));
+    context.save();
+    for (let i = 1; i <= steps; i++) {
+      const t = i / (steps + 1);
+      const pulse = 0.35 + 0.35 * Math.sin(FULL_TURN * (time * 1.4 - t));
+      context.globalAlpha = 0.14 + 0.2 * pulse;
+      context.fillStyle = '#087f78';
+      context.beginPath();
+      context.arc(startX + (endX - startX) * t, startY + (endY - startY) * t, 3.2, 0, FULL_TURN);
+      context.fill();
+    }
+    context.restore();
+  }
+
+  private drawWorldObject(
+    context: CanvasRenderingContext2D,
+    obj: RenderWorldObject,
+    spatial: SpatialRenderState,
+    time: number,
+  ): void {
+    const x = obj.position.x * this.width;
+    const y = obj.position.y * this.height;
+    const isTarget = spatial.targetObjectId === obj.id;
+    const isActive = spatial.activeObjectId === obj.id;
+    const unit = Math.max(22, Math.min(this.width, this.height) * 0.072);
+
+    context.save();
+
+    // Halo interactivo de selección/alcance.
+    if (isTarget || isActive || obj.inRange) {
+      const ringPulse = 1 + 0.08 * Math.sin(FULL_TURN * time * 1.6);
+      context.save();
+      context.globalAlpha = isActive ? 0.28 : 0.16;
+      context.fillStyle = obj.ready ? '#087f78' : '#e8a53b';
+      context.beginPath();
+      context.ellipse(x, y + unit * 0.34, unit * 0.98 * ringPulse, unit * 0.34 * ringPulse, 0, 0, FULL_TURN);
+      context.fill();
+      context.restore();
+    }
+
+    if (obj.id === 'nido') {
+      // Nido tejido cálido.
+      context.globalAlpha = 0.2;
+      context.fillStyle = '#164d42';
+      context.beginPath();
+      context.ellipse(x, y + unit * 0.34, unit * 0.95, unit * 0.3, 0, 0, FULL_TURN);
+      context.fill();
+
+      context.globalAlpha = 1;
+      context.fillStyle = '#d89b52';
+      context.strokeStyle = '#8b5d2b';
+      context.lineWidth = 2.5;
+      context.beginPath();
+      context.ellipse(x, y + unit * 0.14, unit * 0.86, unit * 0.42, 0, 0, FULL_TURN);
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = '#f8e3ba';
+      context.beginPath();
+      context.ellipse(x, y + unit * 0.08, unit * 0.62, unit * 0.25, 0, 0, FULL_TURN);
+      context.fill();
+    } else if (obj.id === 'comedero') {
+      // Dispensador de comida + indicador de ración lista.
+      context.globalAlpha = 0.18;
+      context.fillStyle = '#164d42';
+      context.beginPath();
+      context.ellipse(x, y + unit * 0.4, unit * 0.72, unit * 0.24, 0, 0, FULL_TURN);
+      context.fill();
+
+      context.globalAlpha = 1;
+      context.fillStyle = '#e7f5f0';
+      context.strokeStyle = '#287967';
+      context.lineWidth = 2.4;
+      context.fillRect(x - unit * 0.48, y - unit * 0.68, unit * 0.96, unit * 0.98);
+      if (typeof context.strokeRect === 'function') {
+        context.strokeRect(x - unit * 0.48, y - unit * 0.68, unit * 0.96, unit * 0.98);
+      }
+
+      context.fillStyle = obj.ready ? '#df6d52' : '#9bb0aa';
+      context.beginPath();
+      context.arc(x, y - unit * 0.26, unit * 0.21, 0, FULL_TURN);
+      context.fill();
+
+      context.fillStyle = obj.ready ? '#6cc5b0' : '#c4d2cc';
+      context.beginPath();
+      context.ellipse(x, y + unit * 0.22, unit * 0.36, unit * 0.14, 0, 0, FULL_TURN);
+      context.fill();
+    } else if (obj.id === 'pelota') {
+      const wobble = !obj.ready ? Math.sin(FULL_TURN * time * 2.8) * 5 : 0;
+      context.globalAlpha = 0.18;
+      context.fillStyle = '#164d42';
+      context.beginPath();
+      context.ellipse(x + wobble, y + unit * 0.42, unit * 0.56, unit * 0.18, 0, 0, FULL_TURN);
+      context.fill();
+
+      context.globalAlpha = 1;
+      context.fillStyle = '#f08065';
+      context.strokeStyle = '#8f3d2d';
+      context.lineWidth = 2.2;
+      context.beginPath();
+      context.arc(x + wobble, y, unit * 0.46, 0, FULL_TURN);
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = '#ffd678';
+      context.beginPath();
+      context.arc(x + wobble - unit * 0.14, y - unit * 0.12, unit * 0.15, 0, FULL_TURN);
+      context.fill();
+    } else {
+      // Lámpara de luz suave suspendida con haz volumétrico cálido.
+      const glow = 0.55 + 0.3 * Math.sin(FULL_TURN * time * 0.75);
+      context.save();
+      context.globalAlpha = 0.14 * glow;
+      context.fillStyle = '#ffd678';
+      context.beginPath();
+      context.ellipse(x, y + unit * 1.15, unit * 1.25, unit * 1.5, 0, 0, FULL_TURN);
+      context.fill();
+      context.restore();
+
+      context.fillStyle = '#287967';
+      context.fillRect(x - 1.5, 0, 3, Math.max(0, y - unit * 0.45));
+
+      context.globalAlpha = 0.32 * glow;
+      context.fillStyle = '#ffd678';
+      context.beginPath();
+      context.arc(x, y, unit * 0.72, 0, FULL_TURN);
+      context.fill();
+
+      context.globalAlpha = 1;
+      context.fillStyle = '#fff5cf';
+      context.strokeStyle = '#c8922b';
+      context.lineWidth = 2.2;
+      context.beginPath();
+      context.arc(x, y, unit * 0.38, 0, FULL_TURN);
+      context.fill();
+      context.stroke();
+    }
+
+    // Arco de recuperación cuando el objeto está en cooldown + etiqueta legible.
+    if (!obj.ready && obj.cooldownSeconds > 0) {
+      const ratio = Math.min(1, Math.max(0, obj.cooldownRemaining / obj.cooldownSeconds));
+      context.save();
+      context.strokeStyle = '#e8a53b';
+      context.lineWidth = 3;
+      context.beginPath();
+      context.arc(x, y, unit * 0.62, -Math.PI / 2, -Math.PI / 2 + FULL_TURN * ratio);
+      context.stroke();
+      context.restore();
+    }
+
+    if (typeof context.fillText === 'function') {
+      context.save();
+      context.font = '700 10px ui-sans-serif, system-ui, sans-serif';
+      context.textAlign = 'center';
+      context.fillStyle = '#14221f';
+      context.globalAlpha = 0.82;
+      context.fillText(obj.name, x, y + unit * 0.72);
+      context.restore();
+    }
+
+    context.restore();
+  }
+
+  private drawSpeechBubble(
+    context: CanvasRenderingContext2D,
+    anchorX: number,
+    anchorY: number,
+    text: string,
+  ): void {
+    if (typeof context.fillText !== 'function') return;
+    const trimmed = text.length > 42 ? `${text.slice(0, 41)}…` : text;
+    const bubbleWidth = Math.min(this.width - 24, Math.max(118, trimmed.length * 6.5 + 24));
+    const bubbleHeight = 28;
+    const bx = Math.min(
+      this.width - bubbleWidth - 12,
+      Math.max(12, anchorX - bubbleWidth / 2),
+    );
+    const by = Math.max(10, anchorY - bubbleHeight);
+
+    context.save();
+    context.globalAlpha = 0.92;
+    context.fillStyle = '#fbfdfb';
+    context.strokeStyle = '#48a892';
+    context.lineWidth = 1.5;
+    context.fillRect(bx, by, bubbleWidth, bubbleHeight);
+    if (typeof context.strokeRect === 'function') {
+      context.strokeRect(bx, by, bubbleWidth, bubbleHeight);
+    }
+    context.fillStyle = '#14221f';
+    context.font = '600 11px ui-sans-serif, system-ui, sans-serif';
+    context.textAlign = 'center';
+    context.fillText(trimmed, bx + bubbleWidth / 2, by + 18);
+    context.restore();
   }
 
   private resizeCanvas(): void {
@@ -278,6 +582,8 @@ export class CanvasVisuals implements IVisuals {
     paths: CreaturePaths,
     mood: CreatureMood,
     time: number,
+    stride = 0,
+    heading: -1 | 1 = 1,
   ): void {
     const bodyGradient = context.createRadialGradient(190, 150, 12, 250, 265, 250);
     bodyGradient.addColorStop(0, '#d6fff2');
@@ -301,18 +607,34 @@ export class CanvasVisuals implements IVisuals {
     this.drawAntennaGlow(context, 151, 43, glowPulse);
     this.drawAntennaGlow(context, 351, 45, glowPulse);
 
-    // Brazos y pies, por detrás del cuerpo.
+    // Brazos y pies con oscilación antifase al caminar.
     context.fillStyle = bodyGradient;
     context.strokeStyle = '#287967';
     context.lineWidth = 5;
+
+    context.save();
+    context.translate(0, -stride * 10);
     context.fill(paths.armLeft);
     context.stroke(paths.armLeft);
+    context.restore();
+
+    context.save();
+    context.translate(0, stride * 10);
     context.fill(paths.armRight);
     context.stroke(paths.armRight);
+    context.restore();
+
+    context.save();
+    context.translate(stride * 12, Math.min(0, -stride * 14));
     context.fill(paths.legLeft);
     context.stroke(paths.legLeft);
+    context.restore();
+
+    context.save();
+    context.translate(-stride * 12, Math.min(0, stride * 14));
     context.fill(paths.legRight);
     context.stroke(paths.legRight);
+    context.restore();
 
     // Cuerpo y detalles principales.
     context.fillStyle = bodyGradient;
@@ -339,8 +661,9 @@ export class CanvasVisuals implements IVisuals {
     const baseEyeOpen = mood === 'sleepy' ? 0.23 : 1;
     const eyeOpen = Math.max(0.08, baseEyeOpen * (1 - blink * 0.94));
     const pupilOffset = mood === 'sad' ? 7 : mood === 'excited' ? -2 : 0;
-    this.drawEye(context, 195, 200, eyeOpen, pupilOffset);
-    this.drawEye(context, 305, 300, eyeOpen, pupilOffset);
+    const gazeShift = Math.abs(stride) > 0.05 ? heading * 5 : 0;
+    this.drawEye(context, 195, 200 + gazeShift, eyeOpen, pupilOffset);
+    this.drawEye(context, 305, 300 + gazeShift, eyeOpen, pupilOffset);
 
     // Los párpados suaves del SVG original; al dormir quedan casi cerrados.
     context.save();

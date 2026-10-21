@@ -69,13 +69,15 @@ BiochemEngine ──▶ BrainInputs (contracts/ibrain.ts)
 
 ## Debug (D2): `getDebugState()` y `BrainDebugState`
 
-Puerto de depuración D2 para consumidores que quieran una vista L2. Este
-checkout no incluye `src/render/brain-view.ts`; la app actual tiene un panel de
-actividad cerebral en `main.ts`. Se consume desde la superficie pública del módulo:
+Puerto de depuración D2 consumido por la vista independiente L2 (`src/render/brain-view.ts`)
+y por el panel de diagnóstico de `main.ts`. Se consume desde la superficie pública del módulo:
 
 ```ts
-import { BrainV05Adapter } from '../src/brain'; // o desde './brain'
-const state = brain.getDebugState(); // BrainDebugState
+import { BrainV05Adapter } from '../src/brain';
+import { BrainView } from '../src/render';
+
+const view = new BrainView(brain); // consume únicamente brain.getDebugState()
+view.mount(canvas);
 ```
 
 ### Mapa de campos de `BrainDebugState`
@@ -87,8 +89,8 @@ const state = brain.getDebugState(); // BrainDebugState
 | `confidence` | `number` | Confianza de la decisión, recortada a 0..1; `0` sin `think()` | ✅ siempre (real) |
 | `explored` | `boolean` | `true` si la acción salió de la exploración ε (no del argmax) | ✅ siempre (real) |
 | `hasThink` | `boolean` | `false` ⇒ aún no se ha llamado a `think()` y el resto es neutro | ✅ siempre |
-| `hiddenActivations` | `number[]` | Activaciones de la capa oculta, en orden de neurona | ⚠️ `[]` — el adaptador no filtra internals; `BrainV05DebugState` usa scores/probabilities/lastDecision |
-| `outputWeights` | `number[]` | Pesos de la capa de salida, plano (fila a fila) | ⚠️ `[]` — ídem (solo trae `weightNorm`/`weightAbsMax`, no la matriz) |
+| `hiddenActivations` | `number[]` | Activaciones `tanh` de la capa oculta, en orden de neurona (`[]` antes de `think()`) | ✅ real en `BrainV05` (`[]` en `PlaceholderBrain`) |
+| `outputWeights` | `number[]` | Pesos `hidden → acciones`, plano fila a fila (`[]` antes de `think()`) | ✅ real en `BrainV05` (`[]` en `PlaceholderBrain`) |
 | `genomeInputs` | `number[]` | Los 4 genes (0..1) realmente enviados como `input.genome` en el último `think()`; `[]` sin `think()` | ✅ siempre (lo aporta el adaptador) |
 
 ### Reglas del puerto

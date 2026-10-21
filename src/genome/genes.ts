@@ -1,5 +1,5 @@
 /**
- * Tabla extensible de genes (Fase genoma: 9 genes semilla).
+ * Tabla extensible de genes (Fase genoma: 9 genes semilla + cabeceras F2 Creatures).
  *
  * Principio acordado (mismo criterio que `registerDrive`): añadir un gen =
  * añadir una fila con `registerGene()` — NO se toca genome.ts, phenotype.ts,
@@ -11,9 +11,14 @@
  * - drives: efectos sobre drives ⇒ delta relativo de decayPerSecond
  *   (ver phenotype.ts: delta = (2·valor − 1) · weight).
  * - brain: efecto sobre un knob del cerebro ⇒ valor = min + valor·(max−min).
+ * - header (opcional, F2): familia, `switchOnTime` ontogenético, peso de
+ *   mutabilidad `0..255` y flags `critical`/`mutable`/`dupable`/`deletable`/`expressed`.
  */
 import type { DriveId } from '../contracts/types';
-import type { BrainKnobId } from '../contracts/igenome';
+import type { BrainKnobId, GeneHeader, ResolvedGeneHeader } from '../contracts/igenome';
+
+/** Peso máximo de mutabilidad en escala Creatures (1 byte sin signo: 0..255). */
+export const MAX_GENE_MUTABILITY = 255;
 
 /** Efecto de un gen sobre el `decayPerSecond` de un drive. */
 export interface DriveGeneEffect {
@@ -49,6 +54,38 @@ export interface GeneDef {
   drives?: DriveGeneEffect[];
   /** Knob de cerebro afectado (como mucho uno por gen). */
   brain?: BrainGeneEffect;
+  /** Cabecera estilo Creatures (F2): ontogenia, protección crítica y flags. */
+  header?: GeneHeader;
+}
+
+/** Resuelve y valida una cabecera de gen con sus valores por defecto. */
+export function resolveGeneHeader(def: Pick<GeneDef, 'id' | 'brain' | 'header'>): ResolvedGeneHeader {
+  const raw = def.header ?? {};
+  const family = raw.family ?? (def.brain ? 'brain' : 'drive');
+  const switchOnTime = raw.switchOnTime ?? 0;
+  if (!Number.isFinite(switchOnTime) || switchOnTime < 0) {
+    throw new RangeError(`switchOnTime inválido para ${def.id}: ${String(raw.switchOnTime)} (debe ser ≥ 0)`);
+  }
+  const mutability = raw.mutability ?? MAX_GENE_MUTABILITY;
+  if (!Number.isFinite(mutability) || mutability < 0 || mutability > MAX_GENE_MUTABILITY) {
+    throw new RangeError(`mutability fuera de 0..255 para ${def.id}: ${String(raw.mutability)}`);
+  }
+  const critical = Boolean(raw.critical ?? false);
+  const mutable = raw.mutable ?? true;
+  const dupable = raw.dupable ?? true;
+  // Regla no negociable #2 (VISION-SUPER-BESTIA.md): un gen crítico primario nunca es eliminable.
+  const deletable = critical ? false : (raw.deletable ?? true);
+  const expressed = raw.expressed ?? true;
+  return {
+    family,
+    switchOnTime,
+    mutability: Math.round(mutability),
+    critical,
+    mutable,
+    dupable,
+    deletable,
+    expressed,
+  };
 }
 
 /** Registro vivo. Añade con registerGene(); léelo con listGeneDefs(). */
@@ -69,6 +106,7 @@ export function registerGene(def: GeneDef): void {
   if (!Number.isFinite(def.defaultWeight) || def.defaultWeight < min || def.defaultWeight > max) {
     throw new RangeError(`defaultWeight fuera de rango para ${def.id}: ${def.defaultWeight}`);
   }
+  resolveGeneHeader(def);
   registry.set(def.id, def);
 }
 
@@ -90,8 +128,9 @@ export function hasGene(id: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Los 9 genes semilla de la Fase genoma. Añadir el nº 10 = registerGene({…})
-// (desde cualquier módulo, antes de construir el Genome).
+// Los 9 genes semilla de la Fase genoma, enriquecidos con cabeceras F2.
+// Todos arrancan con mutability 255, switchOnTime 0 y expressed true para que
+// el comportamiento base sea 100 % idéntico bit a bit a Fase genoma.
 // ---------------------------------------------------------------------------
 
 const SEED_GENES: GeneDef[] = [
@@ -106,6 +145,7 @@ const SEED_GENES: GeneDef[] = [
       { driveId: 'hambre', weight: 0.4 }, // gen 1 ⇒ decay hambre ×1.4
       { driveId: 'energia', weight: 0.4 }, // gen 1 ⇒ energía cae ×1.4 más rápido
     ],
+    header: { family: 'metabolism', critical: true, dupable: true },
   },
   {
     id: 'templanza',
@@ -114,6 +154,7 @@ const SEED_GENES: GeneDef[] = [
     defaultWeight: 0.5,
     range: [0, 1],
     drives: [{ driveId: 'miedo', weight: 0.5 }],
+    header: { family: 'instinct' },
   },
   {
     id: 'sociabilidad',
@@ -122,6 +163,7 @@ const SEED_GENES: GeneDef[] = [
     defaultWeight: 0.5,
     range: [0, 1],
     drives: [{ driveId: 'vinculo', weight: -0.5 }], // gen 1 ⇒ el vínculo decae a la mitad
+    header: { family: 'instinct' },
   },
   {
     id: 'alerta',
@@ -133,6 +175,7 @@ const SEED_GENES: GeneDef[] = [
       { driveId: 'curiosidad', weight: -0.4 },
       { driveId: 'aburrimiento', weight: -0.3 },
     ],
+    header: { family: 'drive' },
   },
   {
     id: 'calma',
@@ -144,6 +187,7 @@ const SEED_GENES: GeneDef[] = [
       { driveId: 'confort', weight: -0.4 },
       { driveId: 'sueno', weight: 0.3 },
     ],
+    header: { family: 'drive' },
   },
   {
     id: 'resiliencia',
@@ -155,6 +199,7 @@ const SEED_GENES: GeneDef[] = [
       { driveId: 'miedo', weight: 0.4 },
       { driveId: 'confort', weight: -0.3 },
     ],
+    header: { family: 'metabolism' },
   },
   // --- Genes de configuración del cerebro (knobs) -------------------------
   {
@@ -164,6 +209,7 @@ const SEED_GENES: GeneDef[] = [
     defaultWeight: 0.5,
     range: [0, 1],
     brain: { knob: 'hiddenSize', range: [4, 64] },
+    header: { family: 'brain', critical: true, dupable: true },
   },
   {
     id: 'exploracion',
@@ -172,6 +218,7 @@ const SEED_GENES: GeneDef[] = [
     defaultWeight: 0.5,
     range: [0, 1],
     brain: { knob: 'epsilonInitial', range: [0.05, 0.6] },
+    header: { family: 'brain' },
   },
   {
     id: 'aprendizaje',
@@ -180,6 +227,7 @@ const SEED_GENES: GeneDef[] = [
     defaultWeight: 0.5,
     range: [0, 1],
     brain: { knob: 'learningRate', range: [0.01, 0.3] },
+    header: { family: 'brain', critical: true, dupable: true },
   },
 ];
 

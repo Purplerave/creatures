@@ -139,9 +139,25 @@ genoma en `src/biochem/engine.ts`, puramente aditivo): en construcción copia
 cada `DriveDef` afectado con `decayPerSecond` ajustado. `driveTable.ts`
 queda intacta. Omitir `phenotype` (o deltas a 0) ⇒ bit a bit Fase 0.
 
+## Extensiones F2 («Genoma Creatures») y F4 («Capa molecular»)
+
+Sin alterar el formato base por defecto ni ninguno de los tests originales, el módulo incluye ahora:
+
+1. **Cabeceras de gen (`GeneHeader` en `src/contracts/igenome.ts` y `src/genome/genes.ts`)**:
+   - `family`: `'metabolism' | 'temperament' | 'neural' | 'custom'`
+   - `switchOnTime`: edad ontogenética en segundos simulados a partir de la cual el gen se enciende (`getPhenotype({ ageSeconds })`).
+   - `mutability` (`0..255`), `mutable` (`boolean`), `expressed` (`boolean`, soporte de pseudogenes) y `critical` (`boolean`).
+2. **Regla innegociable de protección estructural (`mutateStructural`)**:
+   - La copia primaria (`copyIndex === 0`) de todo gen marcado `critical: true` (`metabolismo`, `capacidad`, `aprendizaje`) **nunca puede eliminarse**.
+   - Las copias duplicadas (`copyIndex >= 1`) heredan el gen pero sí pueden mutar libremente y eliminarse, permitiendo neofuncionalización sin embriones inviables.
+3. **Epigenética minimalista reversible (`setMethylation` / `isMethylated`)**:
+   - 1 bit por gen que silencia su expresión fenotípica sin tocar el valor alélico subyacente (`getGene()`), persistido en `serialize()` y heredable con reprogramación parcial en `Genome.crossover(parentA, parentB, seed)`.
+4. **Capa molecular NCBI 64→20 (`src/genome/molecular.ts`)**:
+   - Tabla estándar de 64 codones precalculada en `Uint8Array(64)`, traducción `O(N/3)` (`translateDna`), huella biofísica por ventana deslizante (`computeProteinFingerprint`), mutaciones sinónimas neutras reales por degeneración en 3ª base (`mutateDnaBase`, `synonymousCodonsFor`) y codificación determinista a marco abierto de lectura `5′ ATG-…-TAA 3′` (`encodeAllelesToOrf`).
+
 ## Tests
 
-`npm test` — 25 de Fase 0 + 4 ficheros nuevos:
+`npm test` — **6 suites dedicadas al genoma**:
 
 | fichero | cubre |
 |---|---|
@@ -149,3 +165,5 @@ queda intacta. Omitir `phenotype` (o deltas a 0) ⇒ bit a bit Fase 0.
 | `genome-mutation.test.ts` | intensity 0 ⇒ nada; >0 ⇒ cambia; clamp 0..1; semillas distintas ⇒ hijos distintos |
 | `genome-extensibility.test.ts` | `registerGene` nuevo ⇒ `getGene` + phenotype + motor, sin tocar el motor |
 | `genome-phenotype.test.ts` | decay en la dirección esperada; sin phenotype ⇒ idéntico al base |
+| `genome-creatures.test.ts` | ontogenia `switchOnTime`, protección de `critical`, metilación 1-bit y `Genome.crossover` |
+| `genome-molecular.test.ts` | tabla NCBI 64→20, mutaciones sinónimas *wobble*, huella proteica y RPE dopaminérgico |

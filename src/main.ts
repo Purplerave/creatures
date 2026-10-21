@@ -1,29 +1,56 @@
 /**
- * Arranque: un snapshot alimenta la bioquímica, el cerebro, los visuales y la UI.
- *
- * Bucle de aprendizaje (Fases 3–4): el cerebro v0.5 elige una acción cada
- * 0,75 s simulados; el mundo por eventos la resuelve contra un objeto y aplica
- * un impulso bioquímico. La UI permite enseñar manualmente y el refuerzo
- * automático mide el cambio de malestar entre decisiones.
+ * Composición completa del organismo digital Creatures:
+ *  - Fase 0: `BiochemEngine` determinista (8 drives, 6 químicos, reacciones A→B).
+ *  - L1: `CanvasVisuals` (`Path2D` + hábitat espacial con profundidad y caminata).
+ *  - D1/D2 + L2: `BrainV05Adapter` + `BrainView` en `<canvas id="brain-canvas">`.
+ *  - Fase 3: `BrainV05` (MLP 15 → hiddenSize → 5, ε-greedy + Hebbiano modulado).
+ *  - Fase 4: `CreatureWorld` (objetos 2D, desplazamiento, alcance y eventos).
+ *  - F2 «Genoma Creatures»: cabeceras ricas, `switchOnTime`, metilación y cría.
+ *  - Fase 5: `SaveCoordinator` transaccional (navegador + JSON export/import).
  */
 import type { RenderState } from './contracts/ivisuals';
 import type { BrainInputs, BrainOutput } from './contracts/ibrain';
-import type { DriveId, TickResult } from './contracts/types';
+import type { ChemicalId, DriveId, TickResult } from './contracts/types';
 import { BiochemEngine } from './biochem';
-import type { BrainV05Adapter } from './brain/adapter';
-import { createBrainRuntime } from './brain/runtime';
+import {
+  DRIVE_ORDER,
+  STIMULUS_CHEMICALS,
+  createBrainRuntime,
+  type BrainV05Adapter,
+} from './brain';
 import { BrainV05 } from './brain/brain-v05';
 import { actionFromValue, actionNameFromValue } from './brain/actions';
 import { DEFAULT_REWARD_GAIN, driveDiscomfort, driveReductionReward } from './brain/reward';
-import { Genome } from './genome';
+import {
+  Genome,
+  encodeAllelesToOrf,
+  listGeneDefs,
+  resolveGeneHeader,
+  translateDna,
+} from './genome';
 import { Vocabulary } from './vocab';
 import type { VocabEntry } from './contracts/ivocab';
 import { CanvasVisuals, deriveMood, MOOD_LABELS } from './visuals/canvasVisuals';
-import { CreatureWorld } from './world';
+import { CreatureWorld, type WorldObjectId } from './world';
+import { BrainView } from './render';
+import {
+  clearGameFromStorage,
+  hatchOffspring,
+  loadGameFromStorage,
+  resolveBrowserStorage,
+  resolveLifeStage,
+  restoreGameState,
+  saveGameToStorage,
+  serializeGameState,
+} from './persistence';
 
 const canvas = document.getElementById('app');
+const brainCanvas = document.getElementById('brain-canvas');
+const creatureNameHeading = document.getElementById('creature-name');
+const creatureSubtitle = document.getElementById('creature-subtitle');
 const moodBadge = document.getElementById('mood');
 const driveGrid = document.getElementById('drive-grid');
+const chemStrip = document.getElementById('chem-strip');
 const teachForm = document.getElementById('teach-form');
 const wordInput = document.getElementById('word-input');
 const stimulusSelect = document.getElementById('stimulus-select');
@@ -41,9 +68,25 @@ const autoRewardToggle = document.getElementById('auto-reward');
 const brainFeedback = document.getElementById('brain-feedback');
 const worldGrid = document.getElementById('world-grid');
 const worldAction = document.getElementById('world-action');
+const worldCoords = document.getElementById('world-coords');
 const worldFeedback = document.getElementById('world-feedback');
 const worldActionForm = document.getElementById('world-action-form');
 const worldActionSelect = document.getElementById('world-action-select');
+const spatialStrictToggle = document.getElementById('spatial-strict');
+const genomeGrid = document.getElementById('genome-grid');
+const genomeDna = document.getElementById('genome-dna');
+const genomeStats = document.getElementById('genome-stats');
+const genomeFeedback = document.getElementById('genome-feedback');
+const mutateGenomeButton = document.getElementById('mutate-genome-button');
+const hatchOffspringButton = document.getElementById('hatch-offspring-button');
+const persistenceStatus = document.getElementById('persistence-status');
+const persistenceFeedback = document.getElementById('persistence-feedback');
+const saveGameButton = document.getElementById('save-game-button');
+const loadGameButton = document.getElementById('load-game-button');
+const exportJsonButton = document.getElementById('export-json-button');
+const importJsonInput = document.getElementById('import-json-input');
+const resetGameButton = document.getElementById('reset-game-button');
+const speedButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.speed-btn'));
 
 if (!(canvas instanceof HTMLCanvasElement)) throw new Error('Falta el canvas #app');
 if (!moodBadge) throw new Error('Falta el indicador de estado #mood');
@@ -71,6 +114,8 @@ if (!(autoRewardToggle instanceof HTMLInputElement)) throw new Error('Falta el i
 if (!worldGrid || !worldAction || !worldFeedback) throw new Error('Falta el panel del mundo');
 if (!(worldActionForm instanceof HTMLFormElement)) throw new Error('Falta el formulario de prueba del mundo');
 if (!(worldActionSelect instanceof HTMLSelectElement)) throw new Error('Falta el selector de acciones del mundo');
+
+const habitatCanvas = canvas;
 const moodBadgeElement = moodBadge;
 const teachFormElement = teachForm;
 const wordInputElement = wordInput;
@@ -99,6 +144,12 @@ const STIMULI = [
   { id: 'luz:suave', label: 'Luz suave' },
 ] as const;
 
+const OBJECT_STIMULUS_MAP: Partial<Record<WorldObjectId, string>> = {
+  comedero: 'comida',
+  pelota: 'objeto:pelota',
+  'luz-suave': 'luz:suave',
+};
+
 const DRIVE_LABELS: Record<string, string> = {
   hambre: 'Hambre',
   energia: 'Energía',
@@ -110,6 +161,35 @@ const DRIVE_LABELS: Record<string, string> = {
   confort: 'Confort',
 };
 
+const CHEMICAL_LABELS: Record<string, string> = {
+  glucosa: 'Glucosa',
+  adenosina: 'Adenosina',
+  dopamina: 'Dopamina',
+  cortisol: 'Cortisol',
+  oxitocina: 'Oxitocina',
+  serotonina: 'Serotonina',
+};
+
+const INITIAL_CHEMICALS: Record<string, number> = {
+  glucosa: 0.8,
+  adenosina: 0.12,
+  dopamina: 0.4,
+  cortisol: 0.06,
+  oxitocina: 0.24,
+  serotonina: 0.3,
+};
+
+const INITIAL_DRIVES: Record<string, number> = {
+  hambre: 0.22,
+  energia: 0.76,
+  sueno: 0.18,
+  curiosidad: 0.62,
+  vinculo: 0.54,
+  aburrimiento: 0.2,
+  miedo: 0.08,
+  confort: 0.68,
+};
+
 /** Semilla del cerebro: la misma partida se reproduce bit a bit. */
 const BRAIN_SEED = 20261012;
 /** Intensidad del premio/castigo manual (rango del contrato: [-1, 1]). */
@@ -117,37 +197,22 @@ const MANUAL_REWARD = 1;
 /** El agente elige y mantiene una acción durante este intervalo simulado. */
 const BRAIN_DECISION_INTERVAL = 0.75;
 
-const genome = new Genome();
-const phenotype = genome.getPhenotype();
-// El cerebro real consume los knobs del genoma (hiddenSize, epsilonInitial,
-// learningRate) que resuelve `createBrainRuntime()` desde el fenotipo.
-const brainModel = new BrainV05({ ...phenotype.brain, seed: BRAIN_SEED });
-const brainRuntime = createBrainRuntime(genome, () => brainModel);
-const actionSpace = brainModel.getActions();
-const engine = new BiochemEngine({
-  initialChemicals: {
-    glucosa: 0.8,
-    adenosina: 0.12,
-    dopamina: 0.4,
-    cortisol: 0.06,
-    oxitocina: 0.24,
-    serotonina: 0.3,
-  },
-  initialDrives: {
-    hambre: 0.22,
-    energia: 0.76,
-    sueno: 0.18,
-    curiosidad: 0.62,
-    vinculo: 0.54,
-    aburrimiento: 0.2,
-    miedo: 0.08,
-    confort: 0.68,
-  },
+const browserStorage = resolveBrowserStorage();
+
+let creatureName = 'Nilo';
+let genome = new Genome();
+let phenotype = genome.getPhenotype({ ageSeconds: 0 });
+let brainModel = new BrainV05({ ...phenotype.brain, seed: BRAIN_SEED });
+let brainRuntime = createBrainRuntime(genome, () => brainModel);
+let actionSpace = brainModel.getActions();
+let engine = new BiochemEngine({
+  initialChemicals: INITIAL_CHEMICALS,
+  initialDrives: INITIAL_DRIVES,
   phenotype: brainRuntime.phenotype,
 });
-const brain: BrainV05Adapter = brainRuntime.brain;
-const vocabulary = new Vocabulary();
-const world = new CreatureWorld();
+let brain: BrainV05Adapter = brainRuntime.brain;
+let vocabulary = new Vocabulary();
+let world = new CreatureWorld();
 
 interface DriveReadout {
   meter: HTMLDivElement;
@@ -181,6 +246,21 @@ for (const id of engine.listDrives()) {
   card.append(line, meter);
   driveGrid.append(card);
   driveReadouts.set(id, { meter, value, fill });
+}
+
+const chemReadouts = new Map<ChemicalId, HTMLOutputElement>();
+if (chemStrip) {
+  for (const id of engine.listChemicals()) {
+    const pill = document.createElement('div');
+    pill.className = 'chem-pill';
+    const label = document.createElement('span');
+    label.textContent = CHEMICAL_LABELS[id] ?? id;
+    const value = document.createElement('output');
+    value.textContent = '0%';
+    pill.append(label, value);
+    chemStrip.append(pill);
+    chemReadouts.set(id, value);
+  }
 }
 
 /** Una fila por acción del codebook: se reutiliza entre frames (sin churn). */
@@ -221,6 +301,7 @@ for (const action of actionSpace) {
 
 interface WorldObjectReadout {
   card: HTMLElement;
+  zone: HTMLSpanElement;
   status: HTMLOutputElement;
   uses: HTMLOutputElement;
 }
@@ -233,13 +314,20 @@ for (const object of world.getSnapshot().objects) {
 
   const heading = document.createElement('div');
   heading.className = 'world-object-heading';
+  const titleWrap = document.createElement('div');
+  titleWrap.className = 'world-object-title';
   const icon = document.createElement('span');
   icon.className = 'world-object-icon';
   icon.setAttribute('aria-hidden', 'true');
   icon.textContent = object.icon;
   const name = document.createElement('h3');
   name.textContent = object.name;
-  heading.append(icon, name);
+  titleWrap.append(icon, name);
+
+  const zone = document.createElement('span');
+  zone.className = 'world-object-zone';
+  zone.textContent = `${Math.round(object.distance * 100)}%`;
+  heading.append(titleWrap, zone);
 
   const description = document.createElement('p');
   description.className = 'world-object-description';
@@ -260,16 +348,28 @@ for (const object of world.getSnapshot().objects) {
   state.append(status, uses);
 
   card.append(heading, description, action, state);
+  card.addEventListener('click', () => {
+    const primaryVerb = object.actions[0];
+    if (primaryVerb) performWorldAction(primaryVerb, 'manual');
+  });
   worldGridElement.append(card);
-  worldObjectReadouts.set(object.id, { card, status, uses });
+  worldObjectReadouts.set(object.id, { card, zone, status, uses });
 }
 
 const visuals = new CanvasVisuals();
-visuals.mount(canvas);
+visuals.mount(habitatCanvas);
+
+let brainView: BrainView | null = null;
+if (brainCanvas instanceof HTMLCanvasElement) {
+  brainView = new BrainView({ getDebugState: () => brain.getDebugState() });
+  brainView.mount(brainCanvas);
+}
 
 let lastBrainOutput: BrainOutput = { actions: [0] };
 let frame = 0;
 let simTime = 0;
+let timeScale = 1;
+let mutationCounter = 1;
 let lastFrameTime = performance.now();
 let nextVocabularyRefresh = 0;
 let nextWorldRefresh = 0;
@@ -278,18 +378,137 @@ let animationFrame = 0;
 let previousDiscomfort = 0;
 let suppressNextAutoReward = false;
 let autoReward = autoRewardElement.checked;
+let spatialStrict = spatialStrictToggle instanceof HTMLInputElement ? spatialStrictToggle.checked : false;
 let lastWorldSource: 'brain' | 'manual' = 'brain';
+let activeSpeech = '';
+let speechExpiresAt = 0;
+
+function setSpeech(message: string, durationSimSeconds = 2.4): void {
+  activeSpeech = message;
+  speechExpiresAt = simTime + durationSimSeconds;
+}
+
+function recallSpokenWordForObject(objectId: WorldObjectId): string | null {
+  const stimulusId = OBJECT_STIMULUS_MAP[objectId];
+  if (!stimulusId) return null;
+  const entries = vocabulary.recall(stimulusId);
+  const best = entries.find((item) => item.learned) ?? entries[0];
+  if (!best) return null;
+  return best.learned ? `¡«${best.word}»!` : `¿«${best.word}»…?`;
+}
 
 function brainInputs(snapshot: TickResult, tick: number): BrainInputs {
   return { drives: snapshot.drives, chemicals: snapshot.chemicals, tick };
 }
 
+function renderGenomePanel(): void {
+  if (!genomeGrid || !genomeStats) return;
+  const loci = genome.getLoci();
+  const duplicateCount = loci.filter((locus) => locus.copyIndex > 0).length;
+  const methylatedCount = listGeneDefs().filter((def) => genome.isMethylated(def.id)).length;
+  const currentPhenotype = genome.getPhenotype({ ageSeconds: simTime });
+  genomeStats.textContent = `GEN. ${String(genome.getGeneration()).padStart(2, '0')} · ${loci.length} loci${
+    duplicateCount > 0 ? ` (+${duplicateCount} dup)` : ''
+  } · ${currentPhenotype.brain.hiddenSize ?? 12} ocultas${
+    methylatedCount > 0 ? ` · ${methylatedCount} metilados` : ''
+  }`;
+
+  genomeGrid.replaceChildren();
+  for (const def of listGeneDefs()) {
+    const header = resolveGeneHeader(def);
+    const methylated = genome.isMethylated(def.id);
+    const val = genome.getGene(def.id);
+    const copies = loci.filter((locus) => locus.geneId === def.id).length;
+
+    const card = document.createElement('article');
+    card.className = 'gene-card';
+    card.dataset.geneId = def.id;
+    card.dataset.methylated = String(methylated);
+
+    const top = document.createElement('div');
+    top.className = 'gene-card-top';
+    const name = document.createElement('span');
+    name.textContent = copies > 1 ? `${def.label} ×${copies}` : def.label;
+    const pct = document.createElement('output');
+    pct.textContent = `${Math.round(val * 100)}%`;
+    top.append(name, pct);
+
+    const meta = document.createElement('div');
+    meta.className = 'gene-card-meta';
+    const fam = document.createElement('span');
+    fam.textContent = header.family.toUpperCase();
+    const badge = document.createElement('span');
+    if (header.critical) {
+      badge.className = 'gene-tag-critical';
+      badge.textContent = 'CRÍTICO';
+    } else {
+      badge.textContent = `MUT ${header.mutability}`;
+    }
+    meta.append(fam, badge);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'gene-methyl-btn';
+    btn.setAttribute('aria-pressed', String(methylated));
+    btn.textContent = methylated ? 'Metilado (silenciado)' : 'Expresado · Metilar';
+    btn.addEventListener('click', () => {
+      genome.setMethylation(def.id, !methylated);
+      engine.setPhenotype(genome.getPhenotype({ ageSeconds: simTime }));
+      if (genomeFeedback) {
+        genomeFeedback.textContent = !methylated
+          ? `Marca epigenética activada en «${def.label}»: gen silenciado reversiblemente sin mutar secuencia.`
+          : `Marca epigenética retirada en «${def.label}»: expresión restaurada.`;
+      }
+      renderGenomePanel();
+    });
+
+    card.append(top, meta, btn);
+    genomeGrid.append(card);
+  }
+
+  if (genomeDna) {
+    const cfg = genome.toConfig();
+    const orf = encodeAllelesToOrf(cfg.genes, cfg.seed, 11);
+    const peptide = translateDna(orf);
+    genomeDna.textContent = `5′ ${orf} 3′ · Péptido (${peptide.length} aa): ${peptide}`;
+  }
+}
+
 function renderSnapshot(snapshot: TickResult): void {
+  const worldSnap = world.getSnapshot();
+  const stage = resolveLifeStage(simTime);
+  if (creatureNameHeading) creatureNameHeading.textContent = creatureName;
+  if (creatureSubtitle) {
+    creatureSubtitle.textContent = `GEN. ${String(genome.getGeneration()).padStart(2, '0')} · DÍA ${String(
+      stage.day,
+    ).padStart(2, '0')} · ${stage.label.toUpperCase()}`;
+  }
+
+  const speechText = simTime < speechExpiresAt ? activeSpeech : undefined;
   const state: RenderState = {
     frame,
     drives: snapshot.drives,
     chemicals: snapshot.chemicals,
     simTime,
+    world: {
+      creaturePosition: worldSnap.creature.position,
+      creatureVelocity: worldSnap.creature.velocity,
+      heading: worldSnap.creature.heading,
+      targetObjectId: worldSnap.creature.targetObjectId,
+      activeObjectId: worldSnap.lastInteraction?.applied ? worldSnap.lastInteraction.objectId : null,
+      objects: worldSnap.objects.map((item) => ({
+        id: item.id,
+        name: item.name,
+        icon: item.icon,
+        position: item.position,
+        cooldownRemaining: item.cooldownRemaining,
+        cooldownSeconds: item.cooldownSeconds,
+        uses: item.uses,
+        ready: item.ready,
+        inRange: item.inRange,
+      })),
+      speech: speechText,
+    },
   };
   const mood = deriveMood(state.drives);
   visuals.render(state);
@@ -310,6 +529,22 @@ function renderSnapshot(snapshot: TickResult): void {
     readout.value.textContent = `${percentage}%`;
     readout.fill.style.width = `${percentage}%`;
     readout.meter.setAttribute('aria-valuenow', String(percentage));
+  }
+
+  for (const [id, output] of chemReadouts) {
+    const level = state.chemicals[id] ?? 0;
+    output.textContent = `${Math.round(Math.min(1, Math.max(0, level)) * 100)}%`;
+  }
+
+  if (brainView) {
+    const modelDebug = brainModel.getDebugState();
+    brainView.render({
+      drives: DRIVE_ORDER.map((id) => state.drives[id]?.level ?? 0),
+      stimuli: STIMULUS_CHEMICALS.map((id) => state.chemicals[id] ?? 0),
+      actions: actionSpace,
+      probabilities: modelDebug.probabilities,
+      epsilon: modelDebug.epsilon,
+    });
   }
 }
 
@@ -346,10 +581,16 @@ function renderWorld(): void {
     const readout = worldObjectReadouts.get(object.id);
     if (!readout) continue;
     readout.card.dataset.ready = String(object.ready);
+    readout.card.dataset.inRange = String(object.inRange);
+    readout.zone.textContent = object.inRange ? 'en rango' : `dist ${Math.round(object.distance * 100)}%`;
     readout.status.textContent = object.ready
       ? 'Listo'
       : `Recuperándose · ${object.cooldownRemaining < 1 ? '<1' : object.cooldownRemaining.toFixed(1)} s`;
     readout.uses.textContent = `${object.uses} ${object.uses === 1 ? 'uso' : 'usos'}`;
+  }
+
+  if (worldCoords) {
+    worldCoords.textContent = `Pos (${snapshot.creature.position.x.toFixed(2)}, ${snapshot.creature.position.y.toFixed(2)})`;
   }
 
   const lastActionId = snapshot.lastInteraction?.actionId;
@@ -425,6 +666,7 @@ function teachWord(event: SubmitEvent): void {
     vocabulary.teach(word, stimulusSelectElement.value);
     const stimulusLabel = STIMULI.find((stimulus) => stimulus.id === stimulusSelectElement.value)?.label ?? 'el objeto';
     vocabularyFeedbackElement.textContent = `Asociación registrada: «${word}» → ${stimulusLabel}. Repítela para reforzarla.`;
+    setSpeech(`«${word}» → ${stimulusLabel}`);
     wordInputElement.value = '';
     renderVocabulary();
     wordInputElement.focus();
@@ -434,11 +676,16 @@ function teachWord(event: SubmitEvent): void {
   }
 }
 
-/** Premio/castigo manual sobre la ÚLTIMA decisión (a través del adaptador). */
+/** Ejecuta una acción contra el mundo (manual o cerebral). */
 function performWorldAction(actionId: string, source: 'brain' | 'manual'): void {
-  const interaction = world.performAction(actionId);
+  const requireProximity = source === 'brain' && spatialStrict;
+  const interaction = world.performAction(actionId, { requireProximity });
   lastWorldSource = source;
-  if (interaction.applied && interaction.impulse) engine.applyImpulse(interaction.impulse);
+  if (interaction.applied && interaction.impulse) {
+    engine.applyImpulse(interaction.impulse);
+    const spoken = recallSpokenWordForObject(interaction.objectId);
+    setSpeech(spoken ?? `${interaction.objectId === 'comedero' ? '¡Ñam!' : interaction.actionId}`);
+  }
 
   // Una intervención de prueba cambia el estado del mundo, pero no debe
   // atribuirse a la acción anterior que tomó el cerebro.
@@ -453,6 +700,18 @@ function performWorldAction(actionId: string, source: 'brain' | 'manual'): void 
     : '';
   worldFeedbackElement.textContent = `${prefix}: ${interaction.message}${note}`;
   renderWorld();
+}
+
+function onHabitatCanvasClick(event: MouseEvent): void {
+  const point = visuals.screenToWorld(event.clientX, event.clientY);
+  if (!point) return;
+  const hit = world.hitTestObject(point);
+  if (hit && hit.actions[0]) {
+    performWorldAction(hit.actions[0], 'manual');
+  } else {
+    world.moveCreatureTo(point);
+    renderWorld();
+  }
 }
 
 function onWorldActionSubmit(event: SubmitEvent): void {
@@ -475,7 +734,9 @@ function manualReinforce(reward: number): void {
         decision?.name ?? '—'
       }». Sus sinapsis se ${reward > 0 ? 'refuerzan' : 'debilitan'}.`
     : 'Todavía no hay ninguna decisión que reforzar.';
+  setSpeech(reward > 0 ? '¡Premio recibido!' : 'Mejor pruebo otra cosa…');
   renderBrain();
+  renderSnapshot(engine.tick(0));
 }
 
 function onRewardClick(): void {
@@ -493,11 +754,237 @@ function onAutoRewardChange(): void {
     : 'Refuerzo automático desactivado: solo cuentan los premios y castigos manuales.';
 }
 
+function onSpatialStrictChange(): void {
+  if (!(spatialStrictToggle instanceof HTMLInputElement)) return;
+  spatialStrict = spatialStrictToggle.checked;
+  worldFeedbackElement.textContent = spatialStrict
+    ? 'Modo espacial estricto activo: Nilo debe alcanzar físicamente cada objeto para recibir su impulso.'
+    : 'Modo híbrido activo: Nilo camina hacia el objeto y resuelve la acción en cada intervalo.';
+}
+
+function applyRestoredSession(restored: ReturnType<typeof restoreGameState>, statusText: string): void {
+  brainModel.dispose();
+  genome = restored.genome;
+  phenotype = genome.getPhenotype({ ageSeconds: restored.meta.simTime });
+  brainModel = restored.brainModel;
+  brainRuntime = restored.brainRuntime;
+  actionSpace = brainModel.getActions();
+  engine = restored.engine;
+  brain = brainRuntime.brain;
+  vocabulary = restored.vocabulary;
+  world = restored.world;
+
+  creatureName = restored.meta.creatureName;
+  simTime = restored.meta.simTime;
+  frame = restored.meta.frame;
+  autoReward = restored.meta.autoReward;
+  spatialStrict = restored.meta.spatialStrict;
+  autoRewardElement.checked = autoReward;
+  if (spatialStrictToggle instanceof HTMLInputElement) {
+    spatialStrictToggle.checked = spatialStrict;
+  }
+
+  nextBrainDecision = simTime + BRAIN_DECISION_INTERVAL;
+  nextWorldRefresh = simTime;
+  nextVocabularyRefresh = simTime;
+  suppressNextAutoReward = true;
+
+  const snap = engine.tick(0);
+  previousDiscomfort = driveDiscomfort(snap.drives);
+  if (!brain.getDebugState().hasThink) {
+    lastBrainOutput = brain.think(brainInputs(snap, frame));
+  }
+  renderGenomePanel();
+  renderVocabulary();
+  renderBrain();
+  renderWorld();
+  renderSnapshot(snap);
+
+  if (persistenceStatus) persistenceStatus.textContent = statusText;
+}
+
+function onMutateGenomeClick(): void {
+  const seed = BRAIN_SEED + frame * 31 + mutationCounter * 7919;
+  mutationCounter += 1;
+  const report = genome.mutateStructural(seed, 0.35);
+  phenotype = genome.getPhenotype({ ageSeconds: simTime });
+  engine.setPhenotype(phenotype);
+  renderGenomePanel();
+  if (genomeFeedback) {
+    const extras = [
+      `${report.pointMutations} mutaciones puntuales`,
+      report.duplications.length > 0 ? `+${report.duplications.length} duplicaciones (${report.duplications.join(', ')})` : null,
+      report.deletions.length > 0 ? `−${report.deletions.length} omisiones (${report.deletions.join(', ')})` : null,
+      'genes críticos conservados',
+    ].filter(Boolean);
+    genomeFeedback.textContent = `Mutación F2 aplicada: ${extras.join(' · ')}.`;
+  }
+  setSpeech('¡Siento cambiar mis genes!');
+}
+
+function onHatchOffspringClick(): void {
+  const seed = BRAIN_SEED + frame * 97 + genome.getGeneration() * 104729;
+  const hatched = hatchOffspring({
+    parentA: genome,
+    seed,
+    mutationIntensity: 0.25,
+    initialChemicals: INITIAL_CHEMICALS,
+    initialDrives: INITIAL_DRIVES,
+  });
+  hatched.meta.autoReward = autoReward;
+  hatched.meta.spatialStrict = spatialStrict;
+  applyRestoredSession(hatched, `Cría GEN. ${String(hatched.genome.getGeneration()).padStart(2, '0')}`);
+  setSpeech(`¡Hola! Soy ${creatureName}.`);
+  if (genomeFeedback) {
+    genomeFeedback.textContent = `Ha nacido ${creatureName} (generación ${genome.getGeneration()}) por herencia haploide + mutación F2.`;
+  }
+}
+
+function onSaveGameClick(): void {
+  const payload = serializeGameState(
+    { genome, engine, brainModel, vocabulary, world },
+    { creatureName, simTime, frame, autoReward, spatialStrict },
+  );
+  const ok = saveGameToStorage(browserStorage, payload);
+  if (persistenceFeedback) {
+    persistenceFeedback.textContent = ok
+      ? `Partida de ${creatureName} guardada en este navegador (${Math.round(payload.length / 1024)} KB).`
+      : 'Almacenamiento local no disponible en este entorno; usa «Exportar JSON».';
+  }
+  if (persistenceStatus && ok) persistenceStatus.textContent = 'Guardada en local';
+}
+
+function onLoadGameClick(): void {
+  const raw = loadGameFromStorage(browserStorage);
+  if (!raw) {
+    if (persistenceFeedback) {
+      persistenceFeedback.textContent = 'No hay ninguna partida guardada todavía en este navegador.';
+    }
+    return;
+  }
+  try {
+    const restored = restoreGameState(raw, BRAIN_SEED);
+    applyRestoredSession(restored, 'Restaurada');
+    setSpeech('¡Te recuerdo!');
+    if (persistenceFeedback) {
+      persistenceFeedback.textContent = `Partida de ${creatureName} restaurada con éxito en t = ${simTime.toFixed(1)} s.`;
+    }
+  } catch (error) {
+    if (persistenceFeedback) {
+      persistenceFeedback.textContent =
+        error instanceof Error ? error.message : 'No se pudo restaurar la partida guardada.';
+    }
+  }
+}
+
+function onExportJsonClick(): void {
+  const payload = serializeGameState(
+    { genome, engine, brainModel, vocabulary, world },
+    { creatureName, simTime, frame, autoReward, spatialStrict },
+  );
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `creatures-${creatureName.toLowerCase()}-gen${genome.getGeneration()}.json`;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+  if (persistenceFeedback) {
+    persistenceFeedback.textContent = `Archivo JSON exportado (${anchor.download}).`;
+  }
+}
+
+function onImportJsonChange(event: Event): void {
+  const input = event.target as HTMLInputElement | null;
+  const file = input?.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const text = typeof reader.result === 'string' ? reader.result : '';
+      const restored = restoreGameState(text, BRAIN_SEED);
+      applyRestoredSession(restored, 'Importada');
+      setSpeech('¡Memoria restaurada!');
+      if (persistenceFeedback) {
+        persistenceFeedback.textContent = `Partida importada correctamente: ${creatureName} (GEN. ${genome.getGeneration()}).`;
+      }
+    } catch (error) {
+      if (persistenceFeedback) {
+        persistenceFeedback.textContent =
+          error instanceof Error ? error.message : 'El archivo JSON no es una partida válida.';
+      }
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function onResetGameClick(): void {
+  clearGameFromStorage(browserStorage);
+  const freshGenome = new Genome();
+  const freshPhenotype = freshGenome.getPhenotype({ ageSeconds: 0 });
+  const freshBrain = new BrainV05({ ...freshPhenotype.brain, seed: BRAIN_SEED });
+  const freshRuntime = createBrainRuntime(freshGenome, () => freshBrain);
+  const freshEngine = new BiochemEngine({
+    initialChemicals: INITIAL_CHEMICALS,
+    initialDrives: INITIAL_DRIVES,
+    phenotype: freshPhenotype,
+  });
+  applyRestoredSession(
+    {
+      genome: freshGenome,
+      engine: freshEngine,
+      brainModel: freshBrain,
+      brainRuntime: freshRuntime,
+      vocabulary: new Vocabulary(),
+      world: new CreatureWorld(),
+      meta: {
+        creatureName: 'Nilo',
+        simTime: 0,
+        frame: 0,
+        autoReward: true,
+        spatialStrict: false,
+      },
+    },
+    'Reiniciada',
+  );
+  setSpeech('¡Empezamos de nuevo!');
+  if (persistenceFeedback) {
+    persistenceFeedback.textContent = 'Partida reiniciada al estado fundacional determinista de Nilo.';
+  }
+}
+
+for (const btn of speedButtons) {
+  btn.addEventListener('click', () => {
+    const nextSpeed = Number(btn.dataset.speed ?? '1');
+    if (!Number.isFinite(nextSpeed) || nextSpeed < 0) return;
+    timeScale = nextSpeed;
+    for (const candidate of speedButtons) {
+      candidate.setAttribute('aria-pressed', String(candidate === btn));
+    }
+  });
+}
+
+habitatCanvas.addEventListener('click', onHabitatCanvasClick);
 teachFormElement.addEventListener('submit', teachWord);
 worldActionFormElement.addEventListener('submit', onWorldActionSubmit);
 rewardButtonElement.addEventListener('click', onRewardClick);
 punishButtonElement.addEventListener('click', onPunishClick);
 autoRewardElement.addEventListener('change', onAutoRewardChange);
+spatialStrictToggle?.addEventListener('change', onSpatialStrictChange);
+mutateGenomeButton?.addEventListener('click', onMutateGenomeClick);
+hatchOffspringButton?.addEventListener('click', onHatchOffspringClick);
+saveGameButton?.addEventListener('click', onSaveGameClick);
+loadGameButton?.addEventListener('click', onLoadGameClick);
+exportJsonButton?.addEventListener('click', onExportJsonClick);
+importJsonInput?.addEventListener('change', onImportJsonChange);
+resetGameButton?.addEventListener('click', onResetGameClick);
+
+if (persistenceStatus && loadGameFromStorage(browserStorage)) {
+  persistenceStatus.textContent = 'Partida disponible en navegador';
+}
+
+renderGenomePanel();
 renderVocabulary();
 
 const initialSnapshot = engine.tick(0);
@@ -511,20 +998,27 @@ renderWorld();
 nextBrainDecision = BRAIN_DECISION_INTERVAL;
 
 function loop(now: number): void {
-  const dt = Math.min(0.1, Math.max(0, (now - lastFrameTime) / 1000));
+  const rawDt = Math.min(0.1, Math.max(0, (now - lastFrameTime) / 1000));
   lastFrameTime = now;
+  const dt = rawDt * timeScale;
   simTime += dt;
   frame += 1;
 
-  world.advance(dt);
+  const stepResult = world.advance(dt);
+  if (stepResult.triggeredInteraction) {
+    const interaction = stepResult.triggeredInteraction;
+    if (interaction.applied && interaction.impulse) {
+      engine.applyImpulse(interaction.impulse);
+      const spoken = recallSpokenWordForObject(interaction.objectId);
+      setSpeech(spoken ?? interaction.actionId);
+    }
+    worldFeedbackElement.textContent = `Acción del cerebro: ${interaction.message}`;
+  }
+
   const snapshot = engine.tick(dt);
   vocabulary.tick(dt);
   const discomfort = driveDiscomfort(snapshot.drives);
 
-  // La decisión se sostiene 0,75 s simulados. Así cada refuerzo evalúa el
-  // resultado de la acción anterior, no un cambio casi nulo de un fotograma.
-  // Si el refuerzo está apagado, se mueve el baseline continuamente para que
-  // reactivarlo no premie/castigue el tiempo transcurrido con el cerebro parado.
   if (!autoReward) previousDiscomfort = discomfort;
   if (simTime >= nextBrainDecision) {
     const skipReward = suppressNextAutoReward;
@@ -556,11 +1050,21 @@ function loop(now: number): void {
 function cleanup(): void {
   cancelAnimationFrame(animationFrame);
   visuals.unmount();
+  brainView?.unmount();
+  habitatCanvas.removeEventListener('click', onHabitatCanvasClick);
   teachFormElement.removeEventListener('submit', teachWord);
   worldActionFormElement.removeEventListener('submit', onWorldActionSubmit);
   rewardButtonElement.removeEventListener('click', onRewardClick);
   punishButtonElement.removeEventListener('click', onPunishClick);
   autoRewardElement.removeEventListener('change', onAutoRewardChange);
+  spatialStrictToggle?.removeEventListener('change', onSpatialStrictChange);
+  mutateGenomeButton?.removeEventListener('click', onMutateGenomeClick);
+  hatchOffspringButton?.removeEventListener('click', onHatchOffspringClick);
+  saveGameButton?.removeEventListener('click', onSaveGameClick);
+  loadGameButton?.removeEventListener('click', onLoadGameClick);
+  exportJsonButton?.removeEventListener('click', onExportJsonClick);
+  importJsonInput?.removeEventListener('change', onImportJsonChange);
+  resetGameButton?.removeEventListener('click', onResetGameClick);
   brainModel.dispose();
 }
 

@@ -93,3 +93,25 @@ export function driveReductionReward(
   }
   return clamp((discomfortBefore - discomfortAfter) * gain, -1, 1);
 }
+
+/**
+ * Señal neuromodulada O(1) inspirada en Schultz (1997) (`docs/VISION-SUPER-BESTIA.md` §2):
+ * combina el error de predicción de recompensa (`rawReward − expectedReward`) con un
+ * escalador global dopaminérgico (`0.5 + dopamina`), recortado al rango `[-1, 1]`.
+ */
+export function neuromodulatedReward(
+  rawReward: number,
+  dopamineLevel: number,
+  expectedReward = 0,
+): number {
+  for (const [label, value] of [
+    ['rawReward', rawReward],
+    ['dopamineLevel', dopamineLevel],
+    ['expectedReward', expectedReward],
+  ] as const) {
+    if (!Number.isFinite(value)) throw new RangeError(`${label} no finito: ${String(value)}`);
+  }
+  const predictionError = rawReward - expectedReward;
+  const modulator = 0.5 + clamp01(dopamineLevel);
+  return clamp(predictionError * modulator, -1, 1);
+}

@@ -1,6 +1,6 @@
-# Creatures 🧬 — una mascota digital con cerebro
+# Creatures 🧬 — una mascota digital con cerebro, genoma y mundo espacial
 
-Proyecto de ocio inspirado en *Creatures* (1996): una criatura virtual con necesidades, aprendizaje y una apariencia que reacciona a su estado. La criatura actual se llama Nilo.
+Proyecto de ocio inspirado en *Creatures* (1996): una criatura virtual web con fisiología homeostática, genoma con epigenética y código genético molecular, red neuronal con aprendizaje Hebbiano, vocabulario asociativo, mundo espacial 2D y persistencia transaccional de partida. La criatura fundadora se llama **Nilo**.
 
 ## Empezar
 
@@ -19,46 +19,37 @@ npm test
 npm run build
 ```
 
-## Probar la demo
+## Probar la aplicación
 
-1. Mira el panel **Objetos del mundo**: Nilo elige una acción cada 0,75 segundos simulados. Descansar/acurrucarse usan el nido; observar usa la luz; explorar usa la pelota; buscar estímulo usa el comedero. Las tarjetas muestran el estado de recuperación y cuántas veces se ha usado cada objeto.
-2. Para probar un resultado concreto, elige un verbo en **Probar un verbo sin entrenar el cerebro** y pulsa **Probar acción**. Comprueba cómo cambian los drives. Esta intervención es manual: no se atribuye como recompensa a la decisión anterior del cerebro.
-3. En **Cerebro de Nilo**, pulsa **Premiar** o **Castigar** para reforzar la última decisión. Las probabilidades y el contador se actualizan en el panel. El interruptor de refuerzo automático permite comparar el aprendizaje con/sin la recompensa por reducción de malestar.
-4. En **Vocabulario**, enseña una palabra asociada a comida, pelota o luz suave; repítela para aumentar confianza y deja pasar tiempo simulado para observar el olvido.
-
-Las interacciones manuales de prueba permiten validar cada objeto al instante; el comportamiento autónomo sigue siendo una demo experimental, no una afirmación de que Nilo ya haya aprendido la tarea de buscar comida.
+1. **Hábitat espacial interactivo (`#app`)**: haz clic sobre cualquier objeto del escenario (**Nido**, **Pelota**, **Luz suave**, **Comedero**) o sobre el suelo para guiar a Nilo en 2D, o deja que su red neuronal navegue autónomamente. El conmutador **Exigir cercanía** obliga a que Nilo alcance físicamente `interactionRadius` antes de consumir el objeto.
+2. **Vista cerebral en vivo L2 (`#brain-canvas`)**: inspecciona en tiempo real la topología `15 → hiddenSize → 5` alimentada exclusivamente por el puerto D2 (`BrainV05Adapter.getDebugState()`): canales sensoriales/genéticos, activaciones `tanh` de la capa oculta, sinapsis excitatorias/inhibitorias y probabilidades de acción.
+3. **Supervisión y refuerzo**: usa **Premiar (+1)** o **Castigar (−1)** para reforzar la última decisión de `BrainV05`, o alterna **Refuerzo automático** (reducción de malestar entre decisiones). **Probar acción** permite verificar manualmente cualquier verbo sin atribuirlo al cerebro.
+4. **Genoma F2, epigenética y capa molecular NCBI (`#genome-panel`)**: metila o desmetila cualquier gen (marca epigenética reversible de 1 bit sin alterar secuencia), aplica **Mutar genoma (F2)** (mutación paramétrica + duplicación/omisión estructural respetando genes críticos) o pulsa **Incubar cría (GEN+1)** para criar descendencia por herencia haploide, observando en vivo el marco abierto de lectura `5′ ATG-…-TAA 3′` y su péptido traducido.
+5. **Vocabulario y persistencia coordinada (Fase 5)**: enseña palabras asociadas a estímulos (Nilo pronuncia en bocadillo las asociaciones aprendidas al interactuar) y guarda/carga en navegador o exporta/importa JSON transaccional con los 5 subsistemas sincronizados.
 
 ## Estado actual
 
-El scaffold TypeScript/Vite incluye un motor determinista con ocho drives y seis químicos, visuales Canvas, genoma con mutación determinista, vocabulario con olvido y `BrainV05`: un MLP de 15 entradas, capa oculta `tanh`, cinco acciones ε-greedy y aprendizaje Hebbiano modulado por recompensa.
+- **Fase 0–3 + L1 + D1/D2 + L2 (`src/biochem/`, `src/visuals/`, `src/brain/`, `src/render/`)**: motor determinista con 8 drives, 6 químicos, reacciones extensibles e impulsos atómicos; `CanvasVisuals` espacial con `Path2D`; `BrainV05` + `BrainV05Adapter` (`IBrain` + puerto D2) + vista cerebral independiente `BrainView` (`src/render/brain-view.ts`).
+- **Fase 4 espacial (`src/world/`)**: coordenadas 2D normalizadas, movimiento continuo sin sobrepaso, radio de interacción, espera en enfriamiento, `hitTestObject()` para clics en canvas y protocolo A/B determinista (`tests/spatial-world.test.ts`) que demuestra aprendizaje autónomo de comida en `< 5` minutos simulados.
+- **Genoma F2 + Capa molecular F4 (`src/genome/`)**: cabeceras ricas (`family`, `switchOnTime` ontogenético, `mutability`, protección `critical`), metilación reversible de 1 bit, mutación estructural (`mutateStructural`), cruce generacional (`Genome.crossover`) y tabla estándar NCBI de 64 codones en `Uint8Array` (`src/genome/molecular.ts`).
+- **Fase 5 — persistencia y ciclo de vida (`src/persistence/`)**: serialización/deserialización atómica en `BiochemEngine`, `CreatureWorld`, `BrainV05`, `Genome` y `Vocabulary`, restaurada en cuarentena todo-o-nada por `restoreGameState()` más incubación generacional (`hatchOffspring()`).
 
-Esta rama añade el primer corte de **Fase 4** (`src/world/`): cuatro objetos con recuperación, un mapeo explícito de los cinco verbos a objetos e impulsos bioquímicos atómicos (`BiochemEngine.applyImpulse`). La recompensa automática compara el malestar antes y después de cada acción, no cada fotograma.
-
-**Alcance que todavía falta:** este mundo es de eventos; Nilo aún no se desplaza, no hay colisiones ni habitaciones y los efectos son valores iniciales por calibrar. Tampoco existe guardado/carga integrado de la partida. El motor bioquímico y el mundo no tienen aún una serialización coordinada.
-
-Siguen abiertas decisiones de diseño: si conservar el codebook escalar o adoptar one-hot, confirmar los mapeos provisionales de genes y químicos de entrada, y acordar cómo (o si) las palabras aprendidas alimentarán `BrainInputs`. El aprendizaje del cerebro está validado en tests sintéticos; el hito de aprender a buscar comida en una partida real depende de ampliar el mundo y calibrar el refuerzo.
+**Decisiones de producto que siguen abiertas para futuras iteraciones:** ratificar si se mantiene a largo plazo el codebook escalar de `IBrain` o se migra a one-hot, acordar si el vocabulario alimenta `BrainInputs.stimuli`, y ampliar el hábitat a múltiples salas/criaturas sociales.
 
 ## Estructura
 
-- `src/biochem/` — motor determinista, tabla de drives, químicos, reacciones e impulsos de eventos.
-- `src/contracts/` — interfaces compartidas entre simulación y módulos.
-- `src/visuals/canvasVisuals.ts` — implementación Canvas de `IVisuals`.
-- `src/brain/` — adaptador, runtime, MLP v0.5, acciones y recompensa.
-- `src/world/` — mundo mínimo por eventos, objetos y efectos de acciones.
-- `src/genome/` y `src/vocab/` — genoma determinista y vocabulario con olvido.
-- `src/main.ts` — bucle principal, interfaz, decisiones y coordinación de módulos.
-- `tests/` — pruebas Vitest del motor, genoma, cerebro, vocabulario, mundo, visuales y app smoke.
-- `docs/ESTADO-PROYECTO.md` — estado detallado, auditoría de GitHub y próximos pasos.
-- `docs/CEREBRO.md`, `docs/GENOME.md`, `docs/VOCAB.md` — diseños y fórmulas de los módulos.
-- `bichito.html`, `estudio-proyecto-creatures.html`, `report.md`, `notes/` — prototipo, investigación y hoja de ruta.
+- `src/biochem/` — motor determinista, tabla de drives, químicos, reacciones, impulsos y serialización atómica.
+- `src/contracts/` — interfaces compartidas entre simulación y módulos (`IBiochem`, `IBrain`, `IGenome`, `IVisuals`, `IVocabulary`).
+- `src/visuals/canvasVisuals.ts` — renderizador Canvas 2D espacial (`IVisuals` L1) y proyección `screenToWorld()`.
+- `src/render/brain-view.ts` — visualizador neuronal Canvas 2D independiente (L2 sobre puerto D2).
+- `src/brain/` — adaptador D1/D2, runtime, MLP v0.5, acciones, malestar y recompensa neuromodulada.
+- `src/world/` — mundo espacial 2D y de eventos, cinemática sin sobrepaso, hit-test y serialización.
+- `src/genome/` — genoma F2 con ontogenia, metilación, duplicación/omisión, cruce y capa molecular NCBI 64→20.
+- `src/vocab/` — vocabulario asociativo con confianza, olvido exponencial y serialización.
+- `src/persistence/` — coordinador transaccional de partida completa, almacenamiento local y cría generacional.
+- `src/main.ts` — raíz de composición, bucle de simulación con escala temporal y UI de dos columnas.
+- `tests/` — **36 suites / 248 tests** deterministas en Vitest.
 
 ## Contribuir
 
-Consulta [`CONTRIBUTING.md`](CONTRIBUTING.md) para las verificaciones y las reglas de contratos. GitHub tiene plantillas para reportar bugs, proponer mejoras y revisar pull requests. El repositorio aún no declara una licencia; no asumas permisos de reutilización.
-
-## Próximos pasos
-
-1. Dar posición y movimiento a Nilo y a los objetos; convertir las interacciones en eventos espaciales y calibrar una prueba A/B reproducible.
-2. Añadir serialización del motor y del mundo, y coordinarlas con cerebro/genoma/vocabulario desde la UI (exportar/importar y guardado local).
-3. Resolver los mapeos provisionales de genes, estímulos y vocabulario, sin cambiar unilateralmente contratos aprobados.
-4. Completar criterios de éxito para el aprendizaje autónomo con comida, juego y confort.
+Consulta [`CONTRIBUTING.md`](CONTRIBUTING.md) para las verificaciones y las reglas de contratos. El repositorio aún no declara una licencia; no asumas permisos de reutilización.

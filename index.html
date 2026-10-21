@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#eaf1ed" />
-    <title>Creatures — Nilo y su mundo</title>
+    <title>Creatures — Nilo, cerebro L2, mundo espacial y genoma vivo</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -19,7 +19,7 @@
         --amber: #e8a53b;
         --coral: #df6d52;
         --shadow: 0 20px 55px rgba(22, 54, 47, 0.13);
-        --room: radial-gradient(circle at 48% 43%, #edf8f1 0 12%, #d6e6dd 52%, #b9cec4 100%);
+        --room: radial-gradient(circle at 52% 40%, #f1faf4 0 14%, #d6e6dd 54%, #b9cec4 100%);
       }
 
       @media (prefers-color-scheme: dark) {
@@ -35,7 +35,7 @@
           --amber: #f0b951;
           --coral: #f08065;
           --shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
-          --room: radial-gradient(circle at 48% 43%, #1d322e 0 12%, #142521 52%, #0d1917 100%);
+          --room: radial-gradient(circle at 52% 40%, #1d322e 0 14%, #142521 54%, #0d1917 100%);
         }
       }
 
@@ -50,15 +50,16 @@
         line-height: 1.45;
       }
       .shell {
-        width: min(1040px, 100%);
+        width: min(1320px, 100%);
         margin: 0 auto;
-        padding: clamp(16px, 3vw, 32px);
+        padding: clamp(16px, 2.4vw, 28px);
       }
       .page-header {
         display: flex;
         align-items: end;
         justify-content: space-between;
-        gap: 20px;
+        flex-wrap: wrap;
+        gap: 18px;
         margin-bottom: 18px;
       }
       .eyebrow {
@@ -71,15 +72,44 @@
       }
       h1 {
         margin: 0;
-        font-size: clamp(30px, 5vw, 48px);
-        line-height: 1;
-        letter-spacing: -0.055em;
+        font-size: clamp(28px, 4.2vw, 44px);
+        line-height: 1.02;
+        letter-spacing: -0.05em;
       }
       .page-description {
-        max-width: 490px;
-        margin: 10px 0 0;
+        max-width: 590px;
+        margin: 9px 0 0;
         color: var(--muted);
-        font-size: 14px;
+        font-size: 13.5px;
+      }
+      .header-meta {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .speed-bar {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 3px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--surface);
+      }
+      .speed-btn {
+        min-height: 28px;
+        padding: 4px 10px;
+        border: 0;
+        border-radius: 999px;
+        color: var(--muted);
+        background: transparent;
+        font: 700 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+        cursor: pointer;
+      }
+      .speed-btn[aria-pressed="true"] {
+        color: white;
+        background: var(--teal);
       }
       .phase-mark {
         flex: 0 0 auto;
@@ -90,6 +120,18 @@
         background: var(--surface);
         font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace;
         letter-spacing: 0.06em;
+      }
+
+      .workspace-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+        align-items: start;
+        gap: 16px;
+      }
+      .column-stack {
+        min-width: 0;
+        display: grid;
+        gap: 14px;
       }
 
       .habitat {
@@ -107,11 +149,11 @@
         right: 0;
         bottom: 0;
         left: 0;
-        height: 31%;
+        height: 36%;
         content: "";
         background:
           linear-gradient(165deg, transparent 0 15%, color-mix(in srgb, var(--teal) 14%, transparent) 15.3% 16%, transparent 16.3%),
-          linear-gradient(to bottom, color-mix(in srgb, var(--surface) 5%, transparent), color-mix(in srgb, var(--surface-soft) 68%, transparent));
+          linear-gradient(to bottom, color-mix(in srgb, var(--surface) 5%, transparent), color-mix(in srgb, var(--surface-soft) 72%, transparent));
       }
       .habitat::after {
         position: absolute;
@@ -131,7 +173,7 @@
         align-items: start;
         justify-content: space-between;
         gap: 14px;
-        padding: 19px 21px 0;
+        padding: 18px 20px 0;
       }
       .creature-name {
         margin: 0;
@@ -177,9 +219,9 @@
         position: relative;
         z-index: 1;
         width: 100%;
-        min-height: 350px;
-        max-height: 570px;
-        aspect-ratio: 1.28 / 1;
+        min-height: 360px;
+        max-height: 530px;
+        aspect-ratio: 1.32 / 1;
       }
       #app {
         position: absolute;
@@ -188,28 +230,56 @@
         width: 100%;
         height: 100%;
         background: transparent;
+        cursor: pointer;
       }
       .habitat-caption {
         position: relative;
         z-index: 1;
         margin: 0;
-        padding: 0 20px 16px;
+        padding: 0 20px 15px;
         color: var(--muted);
         font-size: 11px;
         text-align: center;
       }
 
-      .world-panel {
-        margin-top: 14px;
-        padding: 18px 19px 20px;
+      .world-panel,
+      .drives-panel,
+      .brain-panel,
+      .genome-panel,
+      .learning-panel,
+      .persistence-panel {
+        padding: 17px 18px 19px;
         border: 1px solid var(--line);
         border-radius: 12px 22px 12px 22px;
         background: var(--surface);
       }
-      .world-panel .panel-heading { flex-wrap: wrap; }
+      .panel-heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 13px;
+      }
+      .panel-heading h2 {
+        margin: 0;
+        font-size: 16px;
+        letter-spacing: -0.025em;
+      }
+      .panel-heading p {
+        margin: 3px 0 0;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .drive-count {
+        color: var(--teal-dark);
+        font: 700 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: nowrap;
+      }
+
       .world-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
       }
       .world-object {
@@ -218,23 +288,38 @@
         border: 1px solid var(--line);
         border-radius: 10px 5px 10px 5px;
         background: color-mix(in srgb, var(--surface-soft) 43%, var(--surface));
+        transition: border-color 0.2s, background 0.2s;
       }
       .world-object[data-ready="false"] { border-color: color-mix(in srgb, var(--amber) 48%, var(--line)); }
+      .world-object[data-in-range="true"] {
+        border-color: var(--teal);
+        background: color-mix(in srgb, var(--teal) 9%, var(--surface));
+      }
       .world-object-heading {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 8px;
       }
-      .world-object-icon { flex: 0 0 auto; font-size: 21px; }
+      .world-object-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+      }
+      .world-object-icon { flex: 0 0 auto; font-size: 20px; }
       .world-object-heading h3 { min-width: 0; margin: 0; font-size: 12px; }
-      .world-object-description {
-        min-height: 42px;
-        margin: 7px 0 8px;
+      .world-object-zone {
         color: var(--muted);
-        font-size: 10px;
+        font: 600 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .world-object-description {
+        margin: 6px 0 7px;
+        color: var(--muted);
+        font-size: 10.5px;
       }
       .world-object-actions {
-        margin: 0 0 9px;
+        margin: 0 0 8px;
         color: var(--teal-dark);
         font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace;
         text-transform: uppercase;
@@ -278,6 +363,14 @@
         outline: 2px solid color-mix(in srgb, var(--teal) 35%, transparent);
         border-color: var(--teal);
       }
+      .world-mode-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
       .world-feedback {
         min-height: 18px;
         margin: 9px 0 0;
@@ -285,39 +378,11 @@
         font-size: 11px;
       }
       .world-note { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
-      .drives-panel {
-        margin-top: 14px;
-        padding: 18px 19px 20px;
-        border: 1px solid var(--line);
-        border-radius: 12px 22px 12px 22px;
-        background: var(--surface);
-      }
-      .panel-heading {
-        display: flex;
-        align-items: end;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 14px;
-      }
-      .panel-heading h2 {
-        margin: 0;
-        font-size: 16px;
-        letter-spacing: -0.025em;
-      }
-      .panel-heading p {
-        margin: 3px 0 0;
-        color: var(--muted);
-        font-size: 11px;
-      }
-      .drive-count {
-        color: var(--teal-dark);
-        font: 700 10px ui-monospace, SFMono-Regular, Menlo, monospace;
-        white-space: nowrap;
-      }
+
       .drive-grid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 9px;
+        gap: 8px;
       }
       .drive-card {
         min-width: 0;
@@ -356,37 +421,66 @@
       .drive-card:nth-child(4n + 2) .drive-meter span { background: var(--amber); }
       .drive-card:nth-child(4n + 3) .drive-meter span { background: #69a9bb; }
       .drive-card:nth-child(4n + 4) .drive-meter span { background: var(--coral); }
-      .brain-panel {
-        margin-top: 14px;
-        padding: 18px 19px 20px;
-        border: 1px solid var(--line);
-        border-radius: 12px 22px 12px 22px;
-        background: var(--surface);
+
+      .chem-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+        margin-top: 11px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--line);
       }
-      .brain-panel .panel-heading { flex-wrap: wrap; }
+      .chem-pill {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        padding: 5px 8px;
+        border-radius: 7px;
+        background: color-mix(in srgb, var(--surface-soft) 60%, var(--surface));
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .chem-pill output {
+        color: var(--ink);
+        font: 700 9.5px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .brain-canvas-wrap {
+        position: relative;
+        margin: 0 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px 18px 10px 18px;
+        background: color-mix(in srgb, var(--surface-soft) 65%, var(--surface));
+        overflow: hidden;
+      }
+      #brain-canvas {
+        display: block;
+        width: 100%;
+        height: 224px;
+      }
       .brain-stats {
-        max-width: 50%;
         white-space: normal;
         text-align: right;
       }
       .brain-decision {
-        margin: 0 0 12px;
+        margin: 0 0 11px;
         padding: 10px 12px;
         border: 1px solid color-mix(in srgb, var(--teal) 35%, var(--line));
         border-radius: 10px 5px 10px 5px;
         background: color-mix(in srgb, var(--teal) 8%, var(--surface));
-        font-size: 13px;
+        font-size: 12.5px;
         font-weight: 700;
       }
       .brain-controls {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 9px;
+        gap: 8px;
       }
       .brain-button {
-        min-height: 38px;
-        padding: 9px 14px;
+        min-height: 36px;
+        padding: 8px 13px;
         border: 1px solid var(--teal);
         border-radius: 8px;
         color: white;
@@ -396,8 +490,13 @@
         font-weight: 800;
         cursor: pointer;
       }
+      .brain-button.secondary {
+        border-color: var(--line);
+        color: var(--ink);
+        background: var(--surface-soft);
+      }
       .brain-button.punish { border-color: var(--coral); background: var(--coral); }
-      .brain-button:hover { filter: brightness(1.08); }
+      .brain-button:hover { filter: brightness(1.06); }
       .brain-button:focus-visible { outline: 3px solid color-mix(in srgb, var(--teal) 35%, transparent); outline-offset: 2px; }
       .brain-toggle {
         display: inline-flex;
@@ -408,7 +507,7 @@
         font-weight: 600;
       }
       .brain-toggle input { width: 15px; height: 15px; accent-color: var(--teal); }
-      .brain-epsilon { display: grid; gap: 5px; margin: 12px 0; }
+      .brain-epsilon { display: grid; gap: 5px; margin: 11px 0; }
       .brain-epsilon-line {
         display: flex;
         align-items: baseline;
@@ -469,22 +568,94 @@
         color: var(--muted);
         font: 700 10px ui-monospace, SFMono-Regular, Menlo, monospace;
       }
-      .learning-panel {
-        margin-top: 14px;
-        padding: 18px 19px 20px;
+
+      .genome-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 7px;
+      }
+      .gene-card {
+        padding: 9px 10px;
         border: 1px solid var(--line);
-        border-radius: 12px 22px 12px 22px;
+        border-radius: 9px 5px 9px 5px;
+        background: color-mix(in srgb, var(--surface-soft) 43%, var(--surface));
+      }
+      .gene-card[data-methylated="true"] {
+        opacity: 0.72;
+        border-style: dashed;
+      }
+      .gene-card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 5px;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .gene-card-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 5px;
+        margin-top: 4px;
+        font: 600 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: var(--muted);
+      }
+      .gene-tag-critical {
+        color: var(--teal-dark);
+      }
+      .gene-methyl-btn {
+        margin-top: 7px;
+        width: 100%;
+        padding: 4px 6px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
         background: var(--surface);
+        color: var(--muted);
+        font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+        cursor: pointer;
       }
-      .learning-panel .panel-heading { flex-wrap: wrap; }
-      .vocab-stats {
-        max-width: 50%;
-        white-space: normal;
-        text-align: right;
+      .gene-methyl-btn[aria-pressed="true"] {
+        border-color: var(--amber);
+        color: #927039;
+        background: color-mix(in srgb, var(--amber) 14%, var(--surface));
       }
+      .genome-actions,
+      .persistence-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 11px;
+      }
+      .dna-readout {
+        margin: 10px 0 0;
+        padding: 8px 10px;
+        border: 1px dashed var(--line);
+        border-radius: 8px;
+        color: var(--muted);
+        background: color-mix(in srgb, var(--surface-soft) 50%, var(--surface));
+        font: 600 9.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.05em;
+        overflow-wrap: anywhere;
+      }
+      .file-import-label {
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        padding: 8px 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface-soft);
+        color: var(--ink);
+        font-size: 11px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .file-import-label input { display: none; }
+
       .teach-form {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(150px, 0.7fr) auto;
+        grid-template-columns: minmax(0, 1fr) minmax(140px, 0.7fr) auto;
         align-items: end;
         gap: 9px;
       }
@@ -592,26 +763,25 @@
         font-size: 10px;
       }
       .footnote {
-        margin: 12px 4px 0;
+        margin: 14px 4px 0;
         color: var(--muted);
         font-size: 10px;
         text-align: center;
       }
 
+      @media (max-width: 980px) {
+        .workspace-grid { grid-template-columns: minmax(0, 1fr); }
+      }
       @media (max-width: 640px) {
-        .shell { padding: 16px 12px; }
-        .page-header { align-items: start; }
+        .shell { padding: 14px 11px; }
         .page-description { font-size: 12px; }
-        .phase-mark { margin-top: 2px; font-size: 9px; }
         .habitat { border-radius: 21px 9px 21px 9px; }
         .habitat-header { padding: 15px 15px 0; }
-        .creature-stage { min-height: 320px; aspect-ratio: 0.98 / 1; }
+        .creature-stage { min-height: 320px; aspect-ratio: 1.02 / 1; }
         .habitat-caption { padding: 0 14px 13px; font-size: 10px; }
-        .drive-grid, .world-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-        .drives-panel, .world-panel, .learning-panel, .brain-panel { padding: 15px 13px 16px; }
-        .world-object { padding: 9px; }
-        .world-action-form { grid-template-columns: 1fr; }
-        .world-action-form .teach-button { grid-column: auto; }
+        .drive-grid, .world-grid, .genome-grid, .chem-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+        .drives-panel, .world-panel, .learning-panel, .brain-panel, .genome-panel, .persistence-panel { padding: 15px 13px 16px; }
+        .world-action-form { grid-template-columns: minmax(0, 1fr); }
         .brain-action-row { grid-template-columns: minmax(78px, 0.6fr) minmax(0, 1fr) auto; gap: 7px; }
         .brain-controls { gap: 7px; }
         .brain-button { flex: 1 1 auto; }
@@ -619,10 +789,8 @@
         .teach-button { grid-column: 1 / -1; }
       }
       @media (max-width: 390px) {
-        .page-header { display: block; }
-        .phase-mark { display: inline-flex; margin-top: 12px; }
         .creature-stage { min-height: 300px; }
-        .teach-form, .vocab-list { grid-template-columns: 1fr; }
+        .teach-form, .vocab-list, .genome-grid, .chem-strip { grid-template-columns: minmax(0, 1fr); }
         .teach-button { grid-column: auto; }
       }
     </style>
@@ -631,126 +799,187 @@
     <main class="shell">
       <header class="page-header">
         <div>
-          <p class="eyebrow">Creatures · cerebro y mundo</p>
-          <h1>Una vida pequeña.<br />Un cerebro que aprende.</h1>
-          <p class="page-description">Nilo se dibuja en Canvas, atiende ocho necesidades y elige cómo responder. Ahora sus acciones producen efectos en objetos del mundo; puedes guiarlo con premios y castigos.</p>
+          <p class="eyebrow">Creatures · L1 + L2 + Mundo espacial + F2 Genoma + Fase 5</p>
+          <h1>Una vida pequeña.<br />Un organismo digital completo.</h1>
+          <p class="page-description">Nilo camina por su hábitat, aprende con refuerzo Hebbiano visible en la vista neural L2, expresa genes con metilación reversible y conserva su partida completa.</p>
         </div>
-        <span class="phase-mark">FASES 3–4 · PROTOTIPO</span>
+        <div class="header-meta">
+          <div class="speed-bar" role="group" aria-label="Velocidad de simulación">
+            <button class="speed-btn" type="button" data-speed="0" aria-pressed="false">Pausa</button>
+            <button class="speed-btn" type="button" data-speed="1" aria-pressed="true">1×</button>
+            <button class="speed-btn" type="button" data-speed="3" aria-pressed="false">3×</button>
+            <button class="speed-btn" type="button" data-speed="8" aria-pressed="false">8×</button>
+          </div>
+          <span class="phase-mark">FASES 0–5 + F2 · ACTIVO</span>
+        </div>
       </header>
 
-      <section class="habitat" aria-label="Hábitat de Nilo">
-        <header class="habitat-header">
-          <div>
-            <h2 class="creature-name">Nilo</h2>
-            <p class="creature-subtitle">Día 01 · cría</p>
-          </div>
-          <output id="mood" class="mood-badge" data-mood="happy" aria-live="polite">Feliz</output>
-        </header>
-        <div class="creature-stage">
-          <canvas id="app" width="800" height="600" role="img" aria-label="Nilo, una criatura virtual dibujada en Canvas.">
-            Tu navegador necesita soporte para Canvas 2D y Path2D para mostrar a Nilo.
-          </canvas>
-        </div>
-        <p class="habitat-caption">El entorno y la luz viven en CSS; Nilo respira, parpadea y reacciona en el canvas.</p>
-      </section>
+      <div class="workspace-grid">
+        <div class="column-stack">
+          <section class="habitat" aria-label="Hábitat de Nilo">
+            <header class="habitat-header">
+              <div>
+                <h2 id="creature-name" class="creature-name">Nilo</h2>
+                <p id="creature-subtitle" class="creature-subtitle">GEN. 01 · DÍA 01 · EMBRIÓN</p>
+              </div>
+              <output id="mood" class="mood-badge" data-mood="happy" aria-live="polite">Feliz</output>
+            </header>
+            <div class="creature-stage">
+              <canvas id="app" width="800" height="600" role="img" aria-label="Nilo, una criatura virtual dibujada en Canvas.">
+                Tu navegador necesita soporte para Canvas 2D y Path2D para mostrar a Nilo.
+              </canvas>
+            </div>
+            <p class="habitat-caption">Haz clic directamente sobre cualquier objeto del escenario o usa el panel inferior para guiar e interactuar con Nilo.</p>
+          </section>
 
-      <section class="world-panel" aria-labelledby="world-title">
-        <div class="panel-heading">
-          <div>
-            <h2 id="world-title">Objetos del mundo</h2>
-            <p>El cerebro sostiene cada acción 0,75 s y recibe una consecuencia del objeto correspondiente.</p>
-          </div>
-          <output id="world-action" class="drive-count" aria-label="Origen y verbo de la última acción">Cerebro · sin acción</output>
-        </div>
-        <div id="world-grid" class="world-grid" aria-label="Objetos disponibles en el mundo"></div>
-        <form id="world-action-form" class="world-action-form">
-          <label class="world-action-label" for="world-action-select">
-            Probar un verbo sin entrenar el cerebro
-            <select id="world-action-select" name="action">
-              <option value="descansar">Descansar · nido</option>
-              <option value="acurrucarse">Acurrucarse · nido</option>
-              <option value="observar">Observar · luz suave</option>
-              <option value="explorar">Explorar · pelota</option>
-              <option value="buscar">Buscar estímulo · comedero</option>
-            </select>
-          </label>
-          <button class="teach-button" type="submit">Probar acción</button>
-        </form>
-        <p id="world-feedback" class="world-feedback" role="status" aria-live="polite">El cerebro ejecutará su primera acción al iniciar.</p>
-        <p class="world-note">Las pruebas manuales no entrenan el cerebro. Este primer mundo es de eventos: todavía no hay movimiento, colisiones ni habitaciones.</p>
-      </section>
+          <section class="drives-panel" aria-labelledby="drives-title">
+            <div class="panel-heading">
+              <div>
+                <h2 id="drives-title">Bioquímica y necesidades</h2>
+                <p>8 drives acoplados a 6 neuroquímicos con integración determinista.</p>
+              </div>
+              <span class="drive-count">8 DRIVES · 6 QUÍMICOS</span>
+            </div>
+            <div id="drive-grid" class="drive-grid" aria-label="Niveles actuales de los drives"></div>
+            <div id="chem-strip" class="chem-strip" aria-label="Niveles actuales de los neuroquímicos"></div>
+          </section>
 
-      <section class="drives-panel" aria-labelledby="drives-title">
-        <div class="panel-heading">
-          <div>
-            <h2 id="drives-title">Necesidades de Nilo</h2>
-            <p>Snapshot de bioquímica leído en cada fotograma.</p>
-          </div>
-          <span class="drive-count">8 DRIVES</span>
+          <section class="world-panel" aria-labelledby="world-title">
+            <div class="panel-heading">
+              <div>
+                <h2 id="world-title">Mundo espacial y objetos</h2>
+                <p>Coordenadas 2D, desplazamiento hacia el objetivo, radio de alcance y enfriamientos.</p>
+              </div>
+              <output id="world-action" class="drive-count" aria-label="Origen y verbo de la última acción">Cerebro · sin acción</output>
+            </div>
+            <div id="world-grid" class="world-grid" aria-label="Objetos disponibles en el mundo"></div>
+            <form id="world-action-form" class="world-action-form">
+              <label class="world-action-label" for="world-action-select">
+                Probar un verbo sin entrenar el cerebro
+                <select id="world-action-select" name="action">
+                  <option value="descansar">Descansar · nido</option>
+                  <option value="acurrucarse">Acurrucarse · nido</option>
+                  <option value="observar">Observar · luz suave</option>
+                  <option value="explorar">Explorar · pelota</option>
+                  <option value="buscar">Buscar estímulo · comedero</option>
+                </select>
+              </label>
+              <button class="teach-button" type="submit">Probar acción</button>
+            </form>
+            <div class="world-mode-row">
+              <label class="brain-toggle" for="spatial-strict">
+                <input id="spatial-strict" type="checkbox" />
+                Exigir cercanía física al objeto antes de aplicar impulso
+              </label>
+              <output id="world-coords" class="drive-count">Pos (0.50, 0.66)</output>
+            </div>
+            <p id="world-feedback" class="world-feedback" role="status" aria-live="polite">El cerebro ejecutará su primera acción al iniciar.</p>
+            <p class="world-note">Las pruebas manuales no entrenan al cerebro. En modo espacial estricto, Nilo camina hasta entrar en el radio del objeto antes de recibir el impulso.</p>
+          </section>
         </div>
-        <div id="drive-grid" class="drive-grid" aria-label="Niveles actuales de los drives"></div>
-      </section>
 
-      <section class="brain-panel" aria-labelledby="brain-title">
-        <div class="panel-heading">
-          <div>
-            <h2 id="brain-title">Cerebro de Nilo</h2>
-            <p>MLP de 15 entradas con ε-greedy y refuerzo Hebbiano: premia o castiga su última decisión.</p>
-          </div>
-          <output id="brain-stats" class="drive-count brain-stats" aria-label="Actividad del cerebro">0 decisiones · 0 refuerzos</output>
-        </div>
-        <p id="brain-decision" class="brain-decision" aria-live="polite">Sin decisión todavía</p>
-        <div class="brain-controls">
-          <button id="reward-button" class="brain-button" type="button">Premiar (+1)</button>
-          <button id="punish-button" class="brain-button punish" type="button">Castigar (−1)</button>
-          <label class="brain-toggle" for="auto-reward">
-            <input id="auto-reward" type="checkbox" checked />
-            Refuerzo automático por reducción de malestar
-          </label>
-        </div>
-        <p id="brain-feedback" class="vocab-feedback" role="status" aria-live="polite"></p>
-        <div class="brain-epsilon">
-          <div class="brain-epsilon-line">
-            <span>Exploración ε (suelo 5 %)</span>
-            <output id="brain-epsilon-value" aria-label="Exploración épsilon actual">0%</output>
-          </div>
-          <div class="brain-epsilon-meter" role="meter" aria-label="Exploración épsilon" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-            <span id="brain-epsilon-fill"></span>
-          </div>
-        </div>
-        <div id="brain-action-grid" class="brain-action-grid" aria-label="Probabilidad de cada acción del cerebro"></div>
-        <p class="vocab-note">Cada acción viaja como un código en [-1, 1] (pasividad ↔ actividad). Con premios repetidos Nilo repite lo que le sienta bien; con castigos deja de hacerlo.</p>
-      </section>
+        <div class="column-stack">
+          <section class="brain-panel" aria-labelledby="brain-title">
+            <div class="panel-heading">
+              <div>
+                <h2 id="brain-title">Cerebro v0.5 y Vista Neural L2</h2>
+                <p>Topología en vivo servida desde el puerto acotado D2 (`getDebugState()`).</p>
+              </div>
+              <output id="brain-stats" class="drive-count brain-stats" aria-label="Actividad del cerebro">0 decisiones · 0 refuerzos</output>
+            </div>
+            <div class="brain-canvas-wrap">
+              <canvas id="brain-canvas" width="560" height="224" role="img" aria-label="Red cerebral de Nilo"></canvas>
+            </div>
+            <p id="brain-decision" class="brain-decision" aria-live="polite">Sin decisión todavía</p>
+            <div class="brain-controls">
+              <button id="reward-button" class="brain-button" type="button">Premiar (+1)</button>
+              <button id="punish-button" class="brain-button punish" type="button">Castigar (−1)</button>
+              <label class="brain-toggle" for="auto-reward">
+                <input id="auto-reward" type="checkbox" checked />
+                Refuerzo automático por reducción de malestar
+              </label>
+            </div>
+            <p id="brain-feedback" class="vocab-feedback" role="status" aria-live="polite"></p>
+            <div class="brain-epsilon">
+              <div class="brain-epsilon-line">
+                <span>Exploración ε (suelo 5 %)</span>
+                <output id="brain-epsilon-value" aria-label="Exploración épsilon actual">0%</output>
+              </div>
+              <div class="brain-epsilon-meter" role="meter" aria-label="Exploración épsilon" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <span id="brain-epsilon-fill"></span>
+              </div>
+            </div>
+            <div id="brain-action-grid" class="brain-action-grid" aria-label="Probabilidad de cada acción del cerebro"></div>
+          </section>
 
-      <section class="learning-panel" aria-labelledby="vocab-title">
-        <div class="panel-heading">
-          <div>
-            <h2 id="vocab-title">Vocabulario de Nilo</h2>
-            <p>Enseña una asociación y refuérzala con repeticiones.</p>
-          </div>
-          <output id="vocab-stats" class="drive-count vocab-stats" aria-label="Estadísticas del vocabulario">0 palabras · 0/0 asociaciones aprendidas</output>
-        </div>
-        <form id="teach-form" class="teach-form">
-          <label class="teach-field" for="word-input">
-            Palabra
-            <input id="word-input" name="word" maxlength="32" autocomplete="off" placeholder="p. ej. pelota" />
-          </label>
-          <label class="teach-field" for="stimulus-select">
-            Asociar con
-            <select id="stimulus-select" name="stimulus">
-              <option value="comida">Comida</option>
-              <option value="objeto:pelota">Pelota</option>
-              <option value="luz:suave">Luz suave</option>
-            </select>
-          </label>
-          <button class="teach-button" type="submit">Enseñar asociación</button>
-        </form>
-        <p id="vocab-feedback" class="vocab-feedback" role="status" aria-live="polite"></p>
-        <div id="vocab-list" class="vocab-list" aria-label="Asociaciones de vocabulario"></div>
-        <p class="vocab-note">Las asociaciones ganan confianza y se olvidan con el tiempo simulado; su entrada al cerebro queda pendiente de acordar.</p>
-      </section>
+          <section id="genome-panel" class="genome-panel" aria-labelledby="genome-title">
+            <div class="panel-heading">
+              <div>
+                <h2 id="genome-title">Genoma Creatures (F2) y Epigenética</h2>
+                <p>Genes críticos protegidos, duplicación de loci y metilación reversible de 1 bit.</p>
+              </div>
+              <output id="genome-stats" class="drive-count">GEN. 01 · 9 loci</output>
+            </div>
+            <div id="genome-grid" class="genome-grid" aria-label="Genes y estado epigenético"></div>
+            <div id="genome-dna" class="dna-readout" aria-label="Secuencia molecular ORF y traducción NCBI"></div>
+            <div class="genome-actions">
+              <button id="mutate-genome-button" class="brain-button secondary" type="button">Mutar genoma (F2)</button>
+              <button id="hatch-offspring-button" class="brain-button" type="button">Incubar cría (GEN+1)</button>
+            </div>
+            <p id="genome-feedback" class="vocab-feedback" role="status" aria-live="polite"></p>
+          </section>
 
-      <p class="footnote">El render es un puerto de solo lectura: la simulación conserva la autoridad sobre el estado.</p>
+          <section class="learning-panel" aria-labelledby="vocab-title">
+            <div class="panel-heading">
+              <div>
+                <h2 id="vocab-title">Vocabulario asociativo</h2>
+                <p>Enseña una palabra y observa cómo Nilo la pronuncia al usar ese objeto.</p>
+              </div>
+              <output id="vocab-stats" class="drive-count vocab-stats" aria-label="Estadísticas del vocabulario">0 palabras · 0/0 asociaciones aprendidas</output>
+            </div>
+            <form id="teach-form" class="teach-form">
+              <label class="teach-field" for="word-input">
+                Palabra
+                <input id="word-input" name="word" maxlength="32" autocomplete="off" placeholder="p. ej. pelota" />
+              </label>
+              <label class="teach-field" for="stimulus-select">
+                Asociar con
+                <select id="stimulus-select" name="stimulus">
+                  <option value="comida">Comida</option>
+                  <option value="objeto:pelota">Pelota</option>
+                  <option value="luz:suave">Luz suave</option>
+                </select>
+              </label>
+              <button class="teach-button" type="submit">Enseñar asociación</button>
+            </form>
+            <p id="vocab-feedback" class="vocab-feedback" role="status" aria-live="polite"></p>
+            <div id="vocab-list" class="vocab-list" aria-label="Asociaciones de vocabulario"></div>
+          </section>
+
+          <section id="persistence-panel" class="persistence-panel" aria-labelledby="persistence-title">
+            <div class="panel-heading">
+              <div>
+                <h2 id="persistence-title">Persistencia de partida (Fase 5)</h2>
+                <p>Guardado transaccional coordinado de genoma, bioquímica, red, vocabulario y mundo.</p>
+              </div>
+              <output id="persistence-status" class="drive-count">Sesión viva</output>
+            </div>
+            <div class="persistence-actions">
+              <button id="save-game-button" class="brain-button" type="button">Guardar en navegador</button>
+              <button id="load-game-button" class="brain-button secondary" type="button">Cargar guardada</button>
+              <button id="export-json-button" class="brain-button secondary" type="button">Exportar JSON</button>
+              <label class="file-import-label">
+                Importar JSON
+                <input id="import-json-input" type="file" accept="application/json,.json" />
+              </label>
+              <button id="reset-game-button" class="brain-button secondary" type="button">Reiniciar Nilo</button>
+            </div>
+            <p id="persistence-feedback" class="vocab-feedback" role="status" aria-live="polite"></p>
+          </section>
+        </div>
+      </div>
+
+      <p class="footnote">Arquitectura por contratos puros: `BiochemEngine` conserva la autoridad bioquímica; `CanvasVisuals` y `BrainView` (L2/D2) son puertos estrictos de solo lectura.</p>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

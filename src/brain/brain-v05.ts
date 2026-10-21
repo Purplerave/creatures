@@ -126,6 +126,10 @@ export interface BrainV05DebugState {
   /** Norma L2 y valor absoluto máximo de los pesos (salud de la red). */
   weightNorm: number;
   weightAbsMax: number;
+  /** Copia defensiva de activaciones ocultas `tanh` tras `think()` (`[]` antes del primero). */
+  hiddenActivations: number[];
+  /** Copia defensiva plana de pesos `hiddenAction` tras `think()` (`[]` antes del primero). */
+  outputWeights: number[];
   /** Extracciones del PRNG consumidas (estado reproducible del azar). */
   draws: number;
 }
@@ -422,6 +426,8 @@ export class BrainV05 implements BrainV05Like {
       rewardTotal: this.rewardTotal,
       weightNorm: Math.sqrt(weightNorm),
       weightAbsMax,
+      hiddenActivations: this.thinks > 0 && !this.disposed ? Array.from(this.hidden) : [],
+      outputWeights: this.thinks > 0 && !this.disposed ? Array.from(this.hiddenAction) : [],
       draws: this.draws,
     };
   }

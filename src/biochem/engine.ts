@@ -1,5 +1,5 @@
 /**
- * BiochemEngine — motor de bioquímica determinista (Fase 0).
+ * BiochemEngine — motor de bioquímica determinista (Fase 0 + serialización Fase 5).
  *
  * Implementa IBiochem. Un tick hace, en orden:
  *  1. Reacciones químicas A→B (integración exponencial de primer orden).
@@ -20,6 +20,16 @@ import { listDriveDefs, type DriveDef } from './driveTable';
 import { listChemicalDefs, type ChemicalDef } from './chemicals';
 import { CHEMICAL_REACTIONS, couplingRate, reactionTransfer } from './reactions';
 
+/** Versión del esquema de serialización del motor bioquímico (Fase 5). */
+export const BIOCHEM_SCHEMA_VERSION = 1;
+
+/** Payload serializado de BiochemEngine con claves deterministas. */
+export interface SerializedBiochemState {
+  schemaVersion: number;
+  drives: Record<DriveId, DriveState>;
+  chemicals: Record<ChemicalId, number>;
+}
+
 export interface BiochemEngineOptions {
   /** Niveles iniciales de químicos (0..1); el resto arranca en 0. */
   initialChemicals?: Partial<Record<ChemicalId, number>>;
@@ -37,6 +47,7 @@ export interface BiochemEngineOptions {
 
 interface DriveSlot {
   def: DriveDef;
+  baseDecayPerSecond: number;
   level: number;
   target: number;
 }
@@ -56,7 +67,8 @@ export class BiochemEngine implements IBiochem {
     for (const def of listDriveDefs()) {
       const initial = options.initialDrives?.[def.id] ?? 0;
       this.driveSlots.set(def.id, {
-        def,
+        def: { ...def },
+        baseDecayPerSecond: def.decayPerSecond,
         level: clamp01(initial, def.clamp[0], def.clamp[1]),
         target: clamp01(initial, def.clamp[0], def.clamp[1]),
       });
@@ -71,21 +83,7 @@ export class BiochemEngine implements IBiochem {
     }
     // Validar que las opciones referencian entidades registradas.
     for (const id of Object.keys(options.initialDrives ?? {})) this.getDriveDefOrThrow(id);
-    // Capa phenotype: deltas relativos de decayPerSecond por drive.
-    // decayEfectivo = decayPerSecond · clamp(1 + delta, 0, 4). Delta 0 ⇒ idéntico.
-    if (options.phenotype) {
-      for (const [id, delta] of Object.entries(options.phenotype.driveDecayDeltas ?? {})) {
-        if (delta === undefined) continue;
-        if (!Number.isFinite(delta)) {
-          throw new RangeError(`Phenotype: delta no finito para drive ${id}: ${delta}`);
-        }
-        const slot = this.driveSlots.get(id);
-        if (!slot) throw new RangeError(`Phenotype: drive no registrado: ${id}`);
-        const multiplier = Math.min(4, Math.max(0, 1 + delta));
-        // Snapshot del def con el decay ajustado (driveTable queda intacto).
-        slot.def = { ...slot.def, decayPerSecond: slot.def.decayPerSecond * multiplier };
-      }
-    }
+    if (options.phenotype) this.setPhenotype(options.phenotype);
     for (const id of Object.keys(options.initialChemicals ?? {})) {
       if (!this.chemicalDefs.has(id)) throw new RangeError(`Químico no registrado: ${id}`);
     }
@@ -95,6 +93,29 @@ export class BiochemEngine implements IBiochem {
     const slot = this.driveSlots.get(id);
     if (!slot) throw new RangeError(`Drive no registrado: ${id}`);
     return slot.def;
+  }
+
+  /**
+   * Reaplica de forma atómica un `PhenotypeConfig` sobre las tasas intrínsecas
+   * base sin perder los niveles vivos de drives/químicos (útil al mutar o
+   * cambiar metilación en caliente).
+   */
+  setPhenotype(phenotype?: PhenotypeConfig): void {
+    const nextMultipliers = new Map<DriveId, number>();
+    for (const [id, delta] of Object.entries(phenotype?.driveDecayDeltas ?? {})) {
+      if (delta === undefined) continue;
+      if (!Number.isFinite(delta)) {
+        throw new RangeError(`Phenotype: delta no finito para drive ${id}: ${delta}`);
+      }
+      if (!this.driveSlots.has(id)) {
+        throw new RangeError(`Phenotype: drive no registrado: ${id}`);
+      }
+      nextMultipliers.set(id, Math.min(4, Math.max(0, 1 + delta)));
+    }
+    for (const [id, slot] of this.driveSlots) {
+      const multiplier = nextMultipliers.get(id) ?? 1;
+      slot.def = { ...slot.def, decayPerSecond: slot.baseDecayPerSecond * multiplier };
+    }
   }
 
   /**
@@ -195,6 +216,94 @@ export class BiochemEngine implements IBiochem {
     const level = this.chemLevels.get(id);
     if (level === undefined) throw new RangeError(`Químico no registrado: ${id}`);
     return level;
+  }
+
+  /** Serializa el estado bioquímico completo a JSON estable (claves ordenadas). */
+  serialize(): string {
+    const drives: Record<DriveId, DriveState> = {};
+    for (const id of [...this.driveSlots.keys()].sort()) {
+      const slot = this.driveSlots.get(id)!;
+      drives[id] = { level: slot.level, target: slot.target };
+    }
+    const chemicals: Record<ChemicalId, number> = {};
+    for (const id of [...this.chemLevels.keys()].sort()) {
+      chemicals[id] = this.chemLevels.get(id)!;
+    }
+    const payload: SerializedBiochemState = {
+      schemaVersion: BIOCHEM_SCHEMA_VERSION,
+      drives,
+      chemicals,
+    };
+    return JSON.stringify(payload);
+  }
+
+  /**
+   * Restaura un estado bioquímico de forma atómica.
+   * Valida versión, tipos, finitud e ids registrados antes de mutar el motor.
+   */
+  deserialize(json: string): void {
+    if (typeof json !== 'string') throw new RangeError('deserialize espera un string JSON');
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(json);
+    } catch {
+      throw new RangeError('JSON de bioquímica inválido');
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new RangeError('Estado bioquímico serializado debe ser un objeto JSON');
+    }
+    const candidate = parsed as Partial<SerializedBiochemState>;
+    if (candidate.schemaVersion !== BIOCHEM_SCHEMA_VERSION) {
+      throw new RangeError(
+        `schemaVersion bioquímica no soportada: ${String(candidate.schemaVersion)} (soportada: ${BIOCHEM_SCHEMA_VERSION})`,
+      );
+    }
+    if (typeof candidate.drives !== 'object' || candidate.drives === null || Array.isArray(candidate.drives)) {
+      throw new RangeError('drives serializados deben ser un mapa');
+    }
+    if (typeof candidate.chemicals !== 'object' || candidate.chemicals === null || Array.isArray(candidate.chemicals)) {
+      throw new RangeError('chemicals serializados deben ser un mapa');
+    }
+
+    const nextDrives = new Map<DriveSlot, DriveState>();
+    for (const [id, rawState] of Object.entries(candidate.drives)) {
+      const slot = this.driveSlots.get(id);
+      if (!slot) throw new RangeError(`Drive serializado no registrado: ${id}`);
+      if (typeof rawState !== 'object' || rawState === null) {
+        throw new RangeError(`Estado inválido para drive ${id}`);
+      }
+      if (typeof rawState.level !== 'number' || !Number.isFinite(rawState.level)) {
+        throw new RangeError(`Nivel no finito para drive ${id}: ${String(rawState.level)}`);
+      }
+      if (typeof rawState.target !== 'number' || !Number.isFinite(rawState.target)) {
+        throw new RangeError(`Target no finito para drive ${id}: ${String(rawState.target)}`);
+      }
+      const [min, max] = slot.def.clamp;
+      nextDrives.set(slot, {
+        level: clamp01(rawState.level, min, max),
+        target: clamp01(rawState.target, min, max),
+      });
+    }
+
+    const nextChemicals = new Map<ChemicalId, number>();
+    for (const [id, rawLevel] of Object.entries(candidate.chemicals)) {
+      if (!this.chemicalDefs.has(id)) throw new RangeError(`Químico serializado no registrado: ${id}`);
+      if (typeof rawLevel !== 'number' || !Number.isFinite(rawLevel)) {
+        throw new RangeError(`Nivel no finito para químico ${id}: ${String(rawLevel)}`);
+      }
+      nextChemicals.set(id, clamp01(rawLevel, 0, 1));
+    }
+
+    // Aplicación atómica: primero resetea faltantes a 0 y luego escribe validados.
+    for (const slot of this.driveSlots.values()) {
+      const [min, max] = slot.def.clamp;
+      const incoming = nextDrives.get(slot);
+      slot.level = incoming ? incoming.level : clamp01(0, min, max);
+      slot.target = incoming ? incoming.target : clamp01(0, min, max);
+    }
+    for (const id of this.chemLevels.keys()) {
+      this.chemLevels.set(id, nextChemicals.get(id) ?? 0);
+    }
   }
 
   /** Extra-contractual: ids de drives registrados (para UI/render). */

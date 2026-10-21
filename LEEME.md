@@ -1,55 +1,41 @@
 # Proyecto «Bichito» — sucesor moderno de Creatures (1996)
 
-**Actualizado:** 13-oct-2026. Proyecto de ocio inspirado en *Creatures*: una mascota web con necesidades, genoma, aprendizaje, vocabulario y, más adelante, un mundo espacial y ciclo de vida. La criatura actual del repo se llama **Nilo**.
+**Actualizado:** 21-oct-2026. Proyecto de ocio inspirado en *Creatures*: una criatura virtual web con fisiología homeostática, genoma con epigenética y traducción molecular NCBI, aprendizaje neuronal Hebbiano, vocabulario asociativo, mundo espacial 2D y ciclo de vida con persistencia completa. La criatura fundadora del repo se llama **Nilo**.
 
-**No es un producto vendible: es por puro disfrute.** Lo que fascinaba del original era ver que las criaturas aprendían. La idea es construir un sucesor web simplificado, tomando el diseño de *Creatures* como inspiración y no como una implementación literal de SVRules.
+**No es un producto vendible: es por puro disfrute.** Lo que fascinaba del original era ver emerger conducta real de una bioquímica y un cerebro acoplados.
 
 ## Estado ejecutable
 
-La app TypeScript/Vite vive en `index.html` + `src/`. Se arranca con `npm ci && npm run dev`. Incluye un motor bioquímico determinista, visuales Canvas, genoma con mutación determinista, vocabulario con olvido y el MLP `BrainV05` con ε-greedy y refuerzo.
+La aplicación TypeScript/Vite vive en `index.html` + `src/` y se arranca con `npm ci && npm run dev`:
 
-El primer corte del mundo por eventos ya enlaza cinco verbos del cerebro con cuatro objetos (nido, comedero, pelota y luz suave). Los objetos emiten impulsos bioquímicos; el motor aplica cada lote validado y recortado a sus clamps. Las decisiones se mantienen 0,75 segundos simulados y la recompensa automática compara el cambio de malestar al cierre de ese intervalo. La UI permite probar cada verbo manualmente sin entrenar al cerebro con esa intervención.
-
-**Límite actual:** todavía no hay posiciones, desplazamiento, colisiones ni habitaciones. Las consecuencias y el mapeo acción→objeto son provisionales. Por ello no se considera validado «aprender a buscar comida» en una partida real, aunque los tests sintéticos sí verifican aprendizaje y reversión de preferencia.
+- **Fisiología determinista (`src/biochem/`)**: 8 drives, 6 neuroquímicos, reacciones acopladas, impulsos atómicos y serialización versionada.
+- **Visuales L1 espaciales (`src/visuals/canvasVisuals.ts`) y Vista Cerebral L2 (`src/render/brain-view.ts`)**: escenario interactivo 2D con criatura `Path2D`, objetos ordenados por profundidad y bocadillo de habla, acompañado en paralelo por el grafo sináptico en tiempo real conectado exclusivamente al puerto D2 (`BrainV05Adapter.getDebugState()`).
+- **Mundo espacial 2D (`src/world/`)**: posiciones normalizadas, desplazamiento continuo sin sobrepaso, radio de interacción, clic directo sobre el hábitat y protocolo A/B reproducible (`tests/spatial-world.test.ts`) donde el agente reforzado aprende a buscar comida en menos de 5 minutos simulados.
+- **Genoma F2 + Capa molecular F4 (`src/genome/`)**: cabeceras de ontogenia (`switchOnTime`), mutabilidad por gen, protección de genes críticos en copia primaria, metilación epigenética reversible de 1 bit, duplicación/borrado estructural, cruce haploide (`Genome.crossover`) y tabla estándar NCBI 64→20 en `Uint8Array` con mutaciones sinónimas neutras reales.
+- **Persistencia coordinada y cría (Fase 5 — `src/persistence/`)**: guardado/carga en `localStorage`, exportación/importación JSON con restauración transaccional todo-o-nada de los 5 subsistemas e incubación de nuevas generaciones (`hatchOffspring`).
 
 ## Qué hay en este paquete
 
 | Archivo o carpeta | Contenido |
 |---|---|
-| `index.html`, `src/` | App web TypeScript/Vite: bioquímica, visuales, cerebro, mundo, genoma, vocabulario y UI. |
-| `src/world/` | Modelo de mundo por eventos, objetos, enfriamientos y consecuencias. |
-| `src/brain/brain-v05.ts` | MLP determinista de 15 entradas, cinco acciones, ε-greedy y Hebbiano por recompensa. |
-| `src/brain/reward.ts` | Malestar normalizado y recompensa por reducción de drives. |
-| `docs/CEREBRO.md` | Modelo cerebral v0.5, fórmulas, aprendizaje, recompensa y serialización. |
-| `docs/GENOME.md`, `docs/VOCAB.md` | Diseño e implementación de genoma y vocabulario. |
-| `docs/ESTADO-PROYECTO.md`, `docs/REVISIONES.md` | Estado actual, revisión de GitHub y decisiones pendientes. |
-| `bichito.html`, `estudio-proyecto-creatures.html`, `report.md`, `notes/` | Prototipo, investigación y hoja de ruta. |
+| `index.html`, `src/main.ts` | Interfaz de laboratorio en dos columnas, controles de velocidad (`⏸`, `1×`, `2×`, `4×`) y composición de runtime. |
+| `src/visuals/`, `src/render/` | Renderizador espacial L1 (`CanvasVisuals`) y vista neuronal L2 (`BrainView` sobre D2). |
+| `src/world/` | Mundo espacial 2D, cinemática, radio de interacción, hit-testing y serialización. |
+| `src/brain/` | `BrainV05` (MLP 15→H→5), `BrainV05Adapter` (D1/D2), runtime y recompensa homeostática/dopaminérgica. |
+| `src/genome/` | Genoma F2 (cabeceras, ontogenia, metilación, mutación estructural, cruce) y capa molecular NCBI (`molecular.ts`). |
+| `src/persistence/` | Coordinador atómico de partida (`serializeGameState`, `restoreGameState`, `hatchOffspring`). |
+| `docs/` | Especificaciones de arquitectura, contratos, cerebro, genoma, vocabulario y estado del proyecto. |
+| `tests/` | **36 suites / 248 tests** unitarios, de integración, benchmark A/B espacial y smoke test de UI. |
 
-## Probar y desarrollar
+## Verificar la entrega
 
 ```bash
 npm ci
-npm run dev
-```
-
-En la app, usa **Probar acción** para seleccionar un verbo y ver el efecto en los drives; la tarjeta muestra el enfriamiento del objeto. Después puedes dejar actuar a Nilo y premiar/castigar su decisión desde el panel cerebral. También puedes enseñar asociaciones en el panel de vocabulario.
-
-Para verificar la entrega:
-
-```bash
 npm run typecheck
 npm test
 npm run build
 ```
 
-La suite incluye pruebas unitarias del cerebro, impulsos bioquímicos y mundo por eventos, además de una prueba smoke de la app en DOM simulado. GitHub Actions ejecuta typecheck, tests y build en push y pull request.
+## Decisiones abiertas para siguientes iteraciones
 
-## Hacia dónde queremos llevarlo
-
-- **Fase 4 — mundo:** movimiento, posiciones y eventos espaciales para que los objetos se usen a distancia y el aprendizaje por drives tenga una tarea real.
-- **Fase 5 — persistencia y ciclo de vida:** exportar/importar y guardar la partida; el cerebro, genoma y vocabulario tienen serialización propia, pero todavía no existe guardado coordinado ni serialización del motor/mundo.
-- Después: nuevas generaciones/genomas, más objetos, edad y ciclo de vida.
-
-## Decisiones pendientes
-
-La revisión de producto/técnica debe ratificar el código escalar de las acciones frente a una alternativa one-hot, los mapeos provisionales de genes y estímulos, y si el vocabulario se traduce a entradas cerebrales. Ver [`docs/REVISIONES.md`](docs/REVISIONES.md). No se cambia un contrato ya aprobado sin acordarlo primero.
+Se mantienen intactos todos los contratos aprobados (`IBrain` escalar, orden de `DRIVE_ORDER`, `STIMULUS_CHEMICALS` y superficie `D2`). Queda abierto para futuras fases decidir si el vocabulario alimenta canales sensoriales del cerebro y expandir el hábitat a múltiples estancias o interacción multi-criatura. Ver [`docs/REVISIONES.md`](docs/REVISIONES.md).

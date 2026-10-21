@@ -208,3 +208,48 @@ describe('app — enseñanza manual', () => {
     expect(document.querySelectorAll('#vocab-list .vocab-entry')).toHaveLength(1);
   });
 });
+
+describe('app — L2 vista cerebral, F2/F4 genoma y Fase 5 persistencia', () => {
+  const click = (id: string): void => {
+    document.getElementById(id)?.dispatchEvent(new window.Event('click'));
+  };
+
+  it('monta el canvas L2 (#brain-canvas) en modo mlp vivo consumiendo D2', () => {
+    runFrames(4);
+    const brainCanvas = document.getElementById('brain-canvas');
+    expect(brainCanvas).not.toBeNull();
+    expect(brainCanvas?.dataset.mode).toBe('mlp');
+    expect(brainCanvas?.dataset.hasThink).toBe('true');
+  });
+
+  it('pinta genes, secuencia ORF NCBI, metilación, mutación F2 e incubación generacional', () => {
+    expect(document.querySelectorAll('#genome-grid .gene-card').length).toBeGreaterThanOrEqual(8);
+    expect(text('genome-dna')).toMatch(/^5′ ATG-.+-TAA 3′ · Péptido \(\d+ aa\): M/);
+
+    const firstMethylButton = document.querySelector('#genome-grid .gene-card button');
+    expect(firstMethylButton).not.toBeNull();
+    firstMethylButton?.dispatchEvent(new window.Event('click'));
+    expect(text('genome-stats')).toContain('1 metilados');
+
+    click('mutate-genome-button');
+    expect(text('genome-feedback')).toMatch(/^Mutación F2 aplicada:/);
+
+    click('hatch-offspring-button');
+    expect(text('genome-stats')).toMatch(/^GEN\. 02 ·/);
+    expect(text('genome-feedback')).toMatch(/^Ha nacido .+ \(generación 2\)/);
+  });
+
+  it('guarda, carga y reinicia la sesión coordinada desde los controles de Fase 5', () => {
+    runFrames(5);
+    click('save-game-button');
+    expect(text('persistence-feedback')).toMatch(/^Partida de .+ guardada en este navegador/);
+    expect(text('persistence-status')).toBe('Guardada en local');
+
+    click('load-game-button');
+    expect(text('persistence-feedback')).toMatch(/^Partida de .+ restaurada con éxito/);
+
+    click('reset-game-button');
+    expect(text('genome-stats')).toMatch(/^GEN\. 01 ·/);
+  });
+});
+
