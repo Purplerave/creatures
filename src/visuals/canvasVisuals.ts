@@ -243,7 +243,7 @@ export class CanvasVisuals implements IVisuals {
     }
 
     // Modo hábitat espacial (Fase 4): orden por profundidad y escala proporcionada.
-    this.drawNavigationGuide(context, spatial, time);
+    this.drawNavigationGuide(context, spatial);
 
     const backObjects = spatial.objects.filter((obj) => obj.position.y <= spatial.creaturePosition.y);
     const frontObjects = spatial.objects.filter((obj) => obj.position.y > spatial.creaturePosition.y);
@@ -342,11 +342,7 @@ export class CanvasVisuals implements IVisuals {
     context.restore();
   }
 
-  private drawNavigationGuide(
-    context: CanvasRenderingContext2D,
-    spatial: SpatialRenderState,
-    time: number,
-  ): void {
+  private drawNavigationGuide(context: CanvasRenderingContext2D, spatial: SpatialRenderState): void {
     const destination = spatial.targetPosition;
     if (!destination) return;
     const startX = spatial.creaturePosition.x * this.width;
@@ -516,11 +512,16 @@ export class CanvasVisuals implements IVisuals {
 
     if (typeof context.fillText === 'function') {
       context.save();
-      context.font = '700 10px ui-sans-serif, system-ui, sans-serif';
+      const labelWidth = Math.max(unit * 1.25, obj.name.length * 6 + 16);
+      const labelY = y + unit * 0.72;
+      context.globalAlpha = 0.9;
+      context.fillStyle = '#fbfdfb';
+      context.fillRect(x - labelWidth / 2, labelY - 13, labelWidth, 19);
+      context.font = '700 11px ui-sans-serif, system-ui, sans-serif';
       context.textAlign = 'center';
       context.fillStyle = '#14221f';
-      context.globalAlpha = 0.82;
-      context.fillText(obj.name, x, y + unit * 0.72);
+      context.globalAlpha = 1;
+      context.fillText(obj.name, x, labelY);
       context.restore();
     }
 
