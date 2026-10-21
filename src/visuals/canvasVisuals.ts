@@ -249,7 +249,7 @@ export class CanvasVisuals implements IVisuals {
     const backObjects = spatial.objects.filter((obj) => obj.position.y <= spatial.creaturePosition.y);
     const frontObjects = spatial.objects.filter((obj) => obj.position.y > spatial.creaturePosition.y);
 
-    for (const obj of backObjects) this.drawWorldObject(context, obj, spatial, time);
+    for (const obj of backObjects) this.drawWorldObject(context, obj, time);
 
     const speedMag = Math.hypot(spatial.creatureVelocity.x, spatial.creatureVelocity.y);
     const walkAmount = Math.min(1, speedMag / 0.65);
@@ -409,7 +409,6 @@ export class CanvasVisuals implements IVisuals {
   private drawWorldObject(
     context: CanvasRenderingContext2D,
     obj: RenderWorldObject,
-    spatial: SpatialRenderState,
     time: number,
   ): void {
     const x = obj.position.x * this.width;
