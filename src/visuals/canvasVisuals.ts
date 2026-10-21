@@ -252,7 +252,7 @@ export class CanvasVisuals implements IVisuals {
 
     const speedMag = Math.hypot(spatial.creatureVelocity.x, spatial.creatureVelocity.y);
     const walkAmount = Math.min(1, speedMag / 0.65);
-    const depthScale = 0.44 + 0.14 * spatial.creaturePosition.y;
+    const depthScale = 0.34 + 0.10 * spatial.creaturePosition.y;
     const scale = (Math.min(this.width, this.height) / VIEWBOX_SIZE) * depthScale;
     const centerX = spatial.creaturePosition.x * this.width;
     const footOffset = 185 * scale;
@@ -347,28 +347,34 @@ export class CanvasVisuals implements IVisuals {
     spatial: SpatialRenderState,
     time: number,
   ): void {
-    if (!spatial.targetObjectId) return;
-    const target = spatial.objects.find((item) => item.id === spatial.targetObjectId);
-    if (!target) return;
-
+    const destination = spatial.targetPosition;
+    if (!destination) return;
     const startX = spatial.creaturePosition.x * this.width;
     const startY = spatial.creaturePosition.y * this.height;
-    const endX = target.position.x * this.width;
-    const endY = Math.max(0.58, target.position.y) * this.height;
+    const endX = destination.x * this.width;
+    const endY = destination.y * this.height;
     const dist = Math.hypot(endX - startX, endY - startY);
     if (dist < 14) return;
 
-    const steps = Math.min(8, Math.max(3, Math.floor(dist / 36)));
     context.save();
-    for (let i = 1; i <= steps; i++) {
-      const t = i / (steps + 1);
-      const pulse = 0.35 + 0.35 * Math.sin(FULL_TURN * (time * 1.4 - t));
-      context.globalAlpha = 0.14 + 0.2 * pulse;
-      context.fillStyle = '#087f78';
-      context.beginPath();
-      context.arc(startX + (endX - startX) * t, startY + (endY - startY) * t, 3.2, 0, FULL_TURN);
-      context.fill();
-    }
+    context.globalAlpha = 0.78;
+    context.strokeStyle = '#087f78';
+    context.lineWidth = 2.5;
+    context.setLineDash([8, 7]);
+    context.beginPath();
+    context.moveTo(startX, startY);
+    context.lineTo(endX, endY);
+    context.stroke();
+    context.setLineDash([]);
+    context.fillStyle = '#087f78';
+    context.beginPath();
+    context.arc(endX, endY, 7, 0, FULL_TURN);
+    context.fill();
+    context.strokeStyle = '#ffffff';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(endX, endY, 3, 0, FULL_TURN);
+    context.stroke();
     context.restore();
   }
 
