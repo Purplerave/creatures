@@ -393,7 +393,7 @@ let suppressNextAutoReward = false;
 let autoReward = autoRewardElement.checked;
 let spatialStrict = spatialStrictToggle instanceof HTMLInputElement ? spatialStrictToggle.checked : true;
 let autonomousMode = autonomyToggleElement.checked;
-let lastWorldSource: 'brain' | 'manual' = 'brain';
+let lastWorldSource: 'brain' | 'manual' = 'manual';
 let activeSpeech = '';
 let speechExpiresAt = 0;
 
@@ -645,9 +645,10 @@ function renderWorld(): void {
 
   const lastActionId = snapshot.lastInteraction?.actionId;
   const lastAction = actionSpace.find((action) => action.id === lastActionId);
-  worldActionElement.textContent = `${lastWorldSource === 'manual' ? 'Prueba manual' : 'Cerebro'} · ${
-    lastAction?.name ?? 'sin acción'
-  }`;
+  const origin = lastActionId
+    ? lastWorldSource === 'manual' ? 'Prueba manual' : 'Cerebro'
+    : autonomousMode ? 'Cerebro' : 'Modo guiado';
+  worldActionElement.textContent = `${origin} · ${lastAction?.name ?? 'sin acción'}`;
 }
 
 function actionReadoutIndex(actions: readonly { id: string }[], id: string): number {
@@ -802,7 +803,7 @@ function onPunishClick(): void {
 function onAutoRewardChange(): void {
   autoReward = autoRewardElement.checked;
   brainFeedbackElement.textContent = autoReward
-    ? `Refuerzo automático activo: la recompensa es la reducción de malestar (ganancia ${DEFAULT_REWARD_GAIN}).`
+    ? `El refuerzo por reducción de malestar solo aprende cuando Nilo está en modo autónomo (ganancia ${DEFAULT_REWARD_GAIN}).`
     : 'Refuerzo automático desactivado: solo cuentan los premios y castigos manuales.';
 }
 
