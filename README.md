@@ -34,7 +34,7 @@ npm run build
 - **Genoma F2 + Capa molecular F4 (`src/genome/`)**: cabeceras ricas (`family`, `switchOnTime` ontogenético, `mutability`, protección `critical`), metilación reversible de 1 bit, mutación estructural (`mutateStructural`), cruce generacional (`Genome.crossover`) y tabla estándar NCBI de 64 codones en `Uint8Array` (`src/genome/molecular.ts`).
 - **Fase 5 — persistencia y ciclo de vida (`src/persistence/`)**: serialización/deserialización atómica en `BiochemEngine`, `CreatureWorld`, `BrainV05`, `Genome` y `Vocabulary`, restaurada en cuarentena todo-o-nada por `restoreGameState()` más incubación generacional (`hatchOffspring()`).
 
-**Decisiones de producto que siguen abiertas para futuras iteraciones:** ratificar si se mantiene a largo plazo el codebook escalar de `IBrain` o se migra a one-hot, acordar si el vocabulario alimenta `BrainInputs.stimuli`, y ampliar el hábitat a múltiples salas/criaturas sociales.
+**Decisiones vigentes:** se conserva el codebook escalar de `IBrain`; el vocabulario permanece como capa expresiva desacoplada del cerebro, según [docs/REVISIONES.md](docs/REVISIONES.md). Las siguientes expansiones de producto y los criterios para acometerlas están en la [hoja de ruta](docs/ROADMAP.md).
 
 ## Estructura
 
