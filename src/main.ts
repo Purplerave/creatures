@@ -70,6 +70,7 @@ const worldGrid = document.getElementById('world-grid');
 const worldAction = document.getElementById('world-action');
 const worldCoords = document.getElementById('world-coords');
 const worldFeedback = document.getElementById('world-feedback');
+const activityLog = document.getElementById('activity-log');
 const worldActionForm = document.getElementById('world-action-form');
 const worldActionSelect = document.getElementById('world-action-select');
 const spatialStrictToggle = document.getElementById('spatial-strict');
@@ -400,6 +401,25 @@ function setSpeech(message: string, durationSimSeconds = 2.4): void {
   speechExpiresAt = simTime + durationSimSeconds;
 }
 
+function recordActivity(label: string, detail: string): void {
+  if (!activityLog) return;
+  if (activityLog.querySelector('.activity-empty')) activityLog.replaceChildren();
+
+  const item = document.createElement('li');
+  const time = document.createElement('time');
+  time.textContent = `${simTime.toFixed(1)} s`;
+  const heading = document.createElement('strong');
+  heading.textContent = label;
+  const message = document.createElement('span');
+  message.textContent = detail;
+  item.append(time, heading, message);
+  activityLog.prepend(item);
+
+  while (activityLog.children.length > 8) {
+    activityLog.lastElementChild?.remove();
+  }
+}
+
 function recallSpokenWordForObject(objectId: WorldObjectId): string | null {
   const stimulusId = OBJECT_STIMULUS_MAP[objectId];
   if (!stimulusId) return null;
@@ -711,6 +731,7 @@ function performWorldAction(actionId: string, source: 'brain' | 'manual'): void 
     ? ' No se enseña al cerebro con esta prueba.'
     : '';
   worldFeedbackElement.textContent = `${prefix}: ${interaction.message}${note}`;
+  recordActivity(source === 'manual' ? 'Prueba manual' : 'Decisión de Nilo', interaction.message);
   renderWorld();
 }
 
@@ -747,6 +768,7 @@ function manualReinforce(reward: number): void {
       }». Sus sinapsis se ${reward > 0 ? 'refuerzan' : 'debilitan'}.`
     : 'Todavía no hay ninguna decisión que reforzar.';
   setSpeech(reward > 0 ? '¡Premio recibido!' : 'Mejor pruebo otra cosa…');
+  recordActivity('Supervisión', `${reward > 0 ? 'premio' : 'castigo'} ${reward > 0 ? '+' : '−'}${Math.abs(reward).toFixed(0)} sobre ${decision?.name ?? 'la última decisión'}`);
   renderBrain();
   renderSnapshot(engine.tick(0));
 }
@@ -1040,6 +1062,7 @@ function loop(now: number): void {
         setSpeech(spoken ?? interaction.actionId);
       }
       worldFeedbackElement.textContent = `Acción del cerebro: ${interaction.message}`;
+      recordActivity('Resultado', interaction.message);
     }
 
     snapshot = engine.tick(dt);
@@ -1052,7 +1075,11 @@ function loop(now: number): void {
       const skipReward = suppressNextAutoReward;
       suppressNextAutoReward = false;
       if (autoReward && !skipReward) {
-        brain.reinforce(driveReductionReward(previousDiscomfort, discomfort));
+        const reward = driveReductionReward(previousDiscomfort, discomfort);
+        brain.reinforce(reward);
+        if (Math.abs(reward) >= 0.01) {
+          recordActivity('Aprendizaje', `refuerzo automático ${reward >= 0 ? '+' : '−'}${Math.abs(reward).toFixed(2)}`);
+        }
       }
       previousDiscomfort = discomfort;
 
