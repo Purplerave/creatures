@@ -811,6 +811,8 @@ function applyRestoredSession(restored: ReturnType<typeof restoreGameState>, sta
   creatureName = restored.meta.creatureName;
   simTime = restored.meta.simTime;
   frame = restored.meta.frame;
+  activityLog?.replaceChildren();
+  recordActivity('Sesión', statusText);
   autoReward = restored.meta.autoReward;
   spatialStrict = restored.meta.spatialStrict;
   autoRewardElement.checked = autoReward;
