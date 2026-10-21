@@ -545,9 +545,7 @@ function renderSnapshot(snapshot: TickResult): void {
   const stage = resolveLifeStage(simTime);
   if (creatureNameHeading) creatureNameHeading.textContent = creatureName;
   if (creatureSubtitle) {
-    creatureSubtitle.textContent = `GEN. ${String(genome.getGeneration()).padStart(2, '0')} · DÍA ${String(
-      stage.day,
-    ).padStart(2, '0')} · ${stage.label.toUpperCase()}`;
+    creatureSubtitle.textContent = `Generación ${genome.getGeneration()} · día ${stage.day} · ${stage.label}`;
   }
 
   const speechText = simTime < speechExpiresAt ? activeSpeech : undefined;
@@ -689,7 +687,9 @@ function renderWorld(): void {
   const origin = lastActionId
     ? lastWorldSource === 'manual' ? 'Prueba manual' : 'Cerebro'
     : autonomousMode ? 'Cerebro' : 'Modo guiado';
-  worldActionElement.textContent = `${origin} · ${lastAction?.name ?? (lastActionId ? WORLD_ACTION_LABELS[lastActionId] : 'sin acción')}`;
+  worldActionElement.textContent = lastActionId
+    ? `Última actividad · ${lastAction?.name ?? WORLD_ACTION_LABELS[lastActionId]}`
+    : 'Elige una actividad';
 }
 
 function actionReadoutIndex(actions: readonly { id: string }[], id: string): number {
