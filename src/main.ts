@@ -991,6 +991,7 @@ renderGenomePanel();
 renderVocabulary();
 
 const initialSnapshot = engine.tick(0);
+let lastSnapshot = initialSnapshot;
 previousDiscomfort = driveDiscomfort(initialSnapshot.drives);
 lastBrainOutput = brain.think(brainInputs(initialSnapshot, frame));
 const initialAction = actionFromValue(actionSpace, lastBrainOutput.actions[0] ?? 0);
@@ -1001,41 +1002,63 @@ renderWorld();
 nextBrainDecision = BRAIN_DECISION_INTERVAL;
 
 function loop(now: number): void {
-  const rawDt = Math.min(0.1, Math.max(0, (now - lastFrameTime) / 1000));
+  const elapsedSeconds = Math.max(0, (now - lastFrameTime) / 1000);
   lastFrameTime = now;
-  const dt = rawDt * timeScale;
-  simTime += dt;
-  frame += 1;
 
-  const stepResult = world.advance(dt);
-  if (stepResult.triggeredInteraction) {
-    const interaction = stepResult.triggeredInteraction;
-    if (interaction.applied && interaction.impulse) {
-      engine.applyImpulse(interaction.impulse);
-      const spoken = recallSpokenWordForObject(interaction.objectId);
-      setSpeech(spoken ?? interaction.actionId);
+  // Fixed simulation steps keep chemistry, movement and learning independent
+  // of the browser's render rate. Cap catch-up after background-tab stalls.
+  const acceptedElapsed = Math.min(elapsedSeconds, 0.25);
+  simulationAccumulator = Math.min(
+    MAX_SIMULATION_BACKLOG_SECONDS,
+    simulationAccumulator + acceptedElapsed * timeScale,
+  );
+
+  let snapshot = lastSnapshot;
+  let steps = 0;
+  while (simulationAccumulator >= SIMULATION_STEP_SECONDS) {
+    const dt = SIMULATION_STEP_SECONDS;
+    simulationAccumulator -= dt;
+    simTime += dt;
+    frame += 1;
+    steps += 1;
+
+    const stepResult = world.advance(dt);
+    if (stepResult.triggeredInteraction) {
+      const interaction = stepResult.triggeredInteraction;
+      if (interaction.applied && interaction.impulse) {
+        engine.applyImpulse(interaction.impulse);
+        const spoken = recallSpokenWordForObject(interaction.objectId);
+        setSpeech(spoken ?? interaction.actionId);
+      }
+      worldFeedbackElement.textContent = `Acción del cerebro: ${interaction.message}`;
     }
-    worldFeedbackElement.textContent = `Acción del cerebro: ${interaction.message}`;
+
+    snapshot = engine.tick(dt);
+    lastSnapshot = snapshot;
+    vocabulary.tick(dt);
+    const discomfort = driveDiscomfort(snapshot.drives);
+
+    if (!autoReward) previousDiscomfort = discomfort;
+    if (simTime >= nextBrainDecision) {
+      const skipReward = suppressNextAutoReward;
+      suppressNextAutoReward = false;
+      if (autoReward && !skipReward) {
+        brain.reinforce(driveReductionReward(previousDiscomfort, discomfort));
+      }
+      previousDiscomfort = discomfort;
+
+      lastBrainOutput = brain.think(brainInputs(snapshot, frame));
+      const selected = actionFromValue(actionSpace, lastBrainOutput.actions[0] ?? 0);
+      if (selected) performWorldAction(selected.action.id, 'brain');
+      renderBrain();
+      nextBrainDecision = simTime + BRAIN_DECISION_INTERVAL;
+    }
   }
 
-  const snapshot = engine.tick(dt);
-  vocabulary.tick(dt);
-  const discomfort = driveDiscomfort(snapshot.drives);
-
-  if (!autoReward) previousDiscomfort = discomfort;
-  if (simTime >= nextBrainDecision) {
-    const skipReward = suppressNextAutoReward;
-    suppressNextAutoReward = false;
-    if (autoReward && !skipReward) {
-      brain.reinforce(driveReductionReward(previousDiscomfort, discomfort));
-    }
-    previousDiscomfort = discomfort;
-
-    lastBrainOutput = brain.think(brainInputs(snapshot, frame));
-    const selected = actionFromValue(actionSpace, lastBrainOutput.actions[0] ?? 0);
-    if (selected) performWorldAction(selected.action.id, 'brain');
-    renderBrain();
-    nextBrainDecision = simTime + BRAIN_DECISION_INTERVAL;
+  // Refresh state changed by manual controls even while simulation is paused.
+  if (steps === 0) {
+    snapshot = engine.tick(0);
+    lastSnapshot = snapshot;
   }
 
   renderSnapshot(snapshot);
@@ -1049,7 +1072,6 @@ function loop(now: number): void {
   }
   animationFrame = requestAnimationFrame(loop);
 }
-
 function cleanup(): void {
   cancelAnimationFrame(animationFrame);
   visuals.unmount();
