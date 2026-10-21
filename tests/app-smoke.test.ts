@@ -188,11 +188,15 @@ describe('app — enseñanza manual', () => {
     expect(reinforcements(text('brain-stats'))).toBeGreaterThan(before);
   });
 
-  it('probar un verbo activa un objeto sin acreditar esa prueba al cerebro', () => {
+  it('una actividad guiada con efecto medible enseña esa preferencia al cerebro', () => {
     const autonomy = document.getElementById('autonomy-toggle');
     if (!(autonomy instanceof HTMLInputElement)) throw new Error('Falta el interruptor #autonomy-toggle');
     autonomy.checked = false;
     autonomy.dispatchEvent(new window.Event('change'));
+    const spatial = document.getElementById('spatial-strict');
+    if (!(spatial instanceof HTMLInputElement)) throw new Error('Falta el interruptor #spatial-strict');
+    spatial.checked = false; // La acción aplica su impulso inmediatamente en modo híbrido.
+    spatial.dispatchEvent(new window.Event('change'));
     const form = document.getElementById('world-action-form');
     const select = document.getElementById('world-action-select');
     if (!(form instanceof HTMLFormElement) || !(select instanceof HTMLSelectElement)) {
@@ -201,19 +205,11 @@ describe('app — enseñanza manual', () => {
     select.value = 'descansar';
     const before = text('brain-stats');
     form.dispatchEvent(new window.Event('submit', { cancelable: true, bubbles: true }));
-    expect(text('world-feedback')).toMatch(/^Prueba manual:/);
+    expect(text('world-feedback')).toMatch(/^Actividad guiada:/);
     expect(text('world-action')).toMatch(/^Tú elegiste · Descansar/);
-    expect(text('world-feedback')).toMatch(/No se enseña al cerebro/);
-    expect(text('brain-stats')).toBe(before);
-
-    const decisionsBefore = Number(/^(\d+)/.exec(before)?.[1] ?? 0);
-    const reinforcementsBefore = reinforcements(before);
-    for (let frame = 0; frame < 60 && Number(/^(\d+)/.exec(text('brain-stats'))?.[1] ?? 0) === decisionsBefore; frame++) {
-      runFrames(1);
-    }
-    const afterDecision = text('brain-stats');
-    expect(Number(/^(\d+)/.exec(afterDecision)?.[1] ?? 0)).toBeGreaterThan(decisionsBefore);
-    expect(reinforcements(afterDecision)).toBe(reinforcementsBefore);
+    expect(reinforcements(text('brain-stats'))).toBe(reinforcements(before) + 1);
+    expect(text('learning-last')).toMatch(/^Aprendió: «Descansar» mejoró/);
+    expect(text('learning-count')).toMatch(/^\d+ refuerzo/);
   });
 
   it('enseñar una palabra sigue funcionando junto al cerebro', () => {
