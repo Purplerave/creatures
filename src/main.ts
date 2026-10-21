@@ -31,7 +31,7 @@ import {
 import { Vocabulary } from './vocab';
 import type { VocabEntry } from './contracts/ivocab';
 import { CanvasVisuals, deriveMood, MOOD_LABELS } from './visuals/canvasVisuals';
-import { CreatureWorld, type WorldObjectId } from './world';
+import { CreatureWorld, WORLD_ACTION_LABELS, type WorldObjectId } from './world';
 import { BrainView } from './render';
 import {
   clearGameFromStorage,
@@ -68,6 +68,7 @@ const punishButton = document.getElementById('punish-button');
 const autoRewardToggle = document.getElementById('auto-reward');
 const brainFeedback = document.getElementById('brain-feedback');
 const worldGrid = document.getElementById('world-grid');
+const habitatChallenges = document.getElementById('habitat-challenges');
 const worldAction = document.getElementById('world-action');
 const worldCoords = document.getElementById('world-coords');
 const worldFeedback = document.getElementById('world-feedback');
@@ -307,8 +308,36 @@ for (const action of actionSpace) {
 interface WorldObjectReadout {
   card: HTMLElement;
   zone: HTMLSpanElement;
+  range: HTMLOutputElement;
   status: HTMLOutputElement;
   uses: HTMLOutputElement;
+}
+
+const habitatChallengeDefs = [
+  { objectId: 'peluche', label: 'Abraza al peluche' },
+  { objectId: 'tunel', label: 'Atraviesa el túnel' },
+  { objectId: 'ventana', label: 'Mira el jardín' },
+  { objectId: 'xilofono', label: 'Toca el xilófono' },
+] as const;
+
+if (habitatChallenges) {
+  const heading = document.createElement('div');
+  heading.className = 'habitat-challenges-heading';
+  const title = document.createElement('strong');
+  title.textContent = 'Pequeños retos';
+  const progress = document.createElement('output');
+  progress.setAttribute('aria-label', 'Retos completados');
+  heading.append(title, progress);
+  const list = document.createElement('ul');
+  list.className = 'habitat-challenges-list';
+  for (const challenge of habitatChallengeDefs) {
+    const item = document.createElement('li');
+    item.className = 'habitat-challenge';
+    item.dataset.challengeId = challenge.objectId;
+    item.textContent = challenge.label;
+    list.append(item);
+  }
+  habitatChallenges.append(heading, list);
 }
 
 const worldObjectReadouts = new Map<string, WorldObjectReadout>();
@@ -332,8 +361,12 @@ for (const object of world.getSnapshot().objects) {
 
   const zone = document.createElement('span');
   zone.className = 'world-object-zone';
-  zone.textContent = `${Math.round(object.distance * 100)}%`;
+  zone.textContent = object.zoneLabel;
   heading.append(titleWrap, zone);
+
+  const range = document.createElement('output');
+  range.className = 'world-object-range';
+  range.textContent = object.inRange ? 'Cerca' : `A ${Math.round(object.distance * 100)} %`;
 
   const description = document.createElement('p');
   description.className = 'world-object-description';
@@ -345,7 +378,7 @@ for (const object of world.getSnapshot().objects) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'world-object-action-button';
-    button.textContent = actionSpace.find((item) => item.id === verb)?.name ?? verb;
+    button.textContent = actionSpace.find((item) => item.id === verb)?.name ?? WORLD_ACTION_LABELS[verb];
     button.addEventListener('click', () => performWorldAction(verb, 'manual'));
     action.append(button);
   }
@@ -360,10 +393,10 @@ for (const object of world.getSnapshot().objects) {
   uses.textContent = '0 usos';
   state.append(status, uses);
 
-  card.append(heading, description, action, state);
+  card.append(heading, range, description, action, state);
   
   worldGridElement.append(card);
-  worldObjectReadouts.set(object.id, { card, zone, status, uses });
+  worldObjectReadouts.set(object.id, { card, zone, range, status, uses });
 }
 
 const visuals = new CanvasVisuals();
@@ -533,6 +566,7 @@ function renderSnapshot(snapshot: TickResult): void {
       objects: worldSnap.objects.map((item) => ({
         id: item.id,
         name: item.name,
+        zoneLabel: item.zoneLabel,
         icon: item.icon,
         position: item.position,
         cooldownRemaining: item.cooldownRemaining,
@@ -627,12 +661,19 @@ function renderBrain(): void {
 
 function renderWorld(): void {
   const snapshot = world.getSnapshot();
+  const completedChallenges = habitatChallengeDefs.filter((challenge) => (snapshot.objects.find((object) => object.id === challenge.objectId)?.uses ?? 0) > 0).length;
+  const challengeProgress = habitatChallenges?.querySelector('output');
+  if (challengeProgress) challengeProgress.textContent = `${completedChallenges}/${habitatChallengeDefs.length} completados`;
+  for (const challenge of habitatChallengeDefs) {
+    const item = habitatChallenges?.querySelector<HTMLElement>(`[data-challenge-id="${challenge.objectId}"]`);
+    if (item) item.dataset.complete = String((snapshot.objects.find((object) => object.id === challenge.objectId)?.uses ?? 0) > 0);
+  }
   for (const object of snapshot.objects) {
     const readout = worldObjectReadouts.get(object.id);
     if (!readout) continue;
     readout.card.dataset.ready = String(object.ready);
     readout.card.dataset.inRange = String(object.inRange);
-    readout.zone.textContent = object.inRange ? 'en rango' : `dist ${Math.round(object.distance * 100)}%`;
+    readout.range.textContent = object.inRange ? 'Nilo está aquí' : `A ${Math.round(object.distance * 100)} %`;
     readout.status.textContent = object.ready
       ? 'Listo'
       : `Recuperándose · ${object.cooldownRemaining < 1 ? '<1' : object.cooldownRemaining.toFixed(1)} s`;
@@ -648,7 +689,7 @@ function renderWorld(): void {
   const origin = lastActionId
     ? lastWorldSource === 'manual' ? 'Prueba manual' : 'Cerebro'
     : autonomousMode ? 'Cerebro' : 'Modo guiado';
-  worldActionElement.textContent = `${origin} · ${lastAction?.name ?? 'sin acción'}`;
+  worldActionElement.textContent = `${origin} · ${lastAction?.name ?? (lastActionId ? WORLD_ACTION_LABELS[lastActionId] : 'sin acción')}`;
 }
 
 function actionReadoutIndex(actions: readonly { id: string }[], id: string): number {
@@ -735,7 +776,7 @@ function performWorldAction(actionId: string, source: 'brain' | 'manual'): void 
   if (interaction.applied && interaction.impulse) {
     engine.applyImpulse(interaction.impulse);
     const spoken = recallSpokenWordForObject(interaction.objectId);
-    setSpeech(spoken ?? `${interaction.objectId === 'comedero' ? '¡Ñam!' : interaction.actionId}`);
+    setSpeech(spoken ?? (interaction.objectId === 'comedero' ? '¡Ñam!' : WORLD_ACTION_LABELS[interaction.actionId]));
   }
 
   // Una intervención de prueba cambia el estado del mundo, pero no debe
@@ -1136,7 +1177,7 @@ function loop(now: number): void {
       if (interaction.applied && interaction.impulse) {
         engine.applyImpulse(interaction.impulse);
         const spoken = recallSpokenWordForObject(interaction.objectId);
-        setSpeech(spoken ?? interaction.actionId);
+        setSpeech(spoken ?? WORLD_ACTION_LABELS[interaction.actionId]);
         if (interactionSource === 'manual') {
           // La interacción manual demorada altera el mundo, pero nunca entrena
           // al cerebro con el efecto de una orden del usuario.
