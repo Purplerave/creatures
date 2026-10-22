@@ -9,7 +9,7 @@
  *  - Fase 5: `SaveCoordinator` transaccional (navegador + JSON export/import).
  */
 import type { RenderState } from './contracts/ivisuals';
-import type { BrainInputs, BrainOutput } from './contracts/ibrain';
+import type { BrainOutput } from './contracts/ibrain';
 import type { ChemicalId, DriveId, TickResult } from './contracts/types';
 import { BiochemEngine } from './biochem';
 import {
@@ -31,8 +31,17 @@ import {
 import { Vocabulary } from './vocab';
 import type { VocabEntry } from './contracts/ivocab';
 import { CanvasVisuals, deriveMood, MOOD_LABELS } from './visuals/canvasVisuals';
-import { CreatureWorld, WORLD_ACTION_LABELS, type WorldObjectId } from './world';
+import { CreatureWorld, WORLD_ACTION_LABELS } from './world';
 import { BrainView } from './render';
+import {
+  applyGuidedInteraction,
+  brainInputs,
+  performGuidedAction,
+  recallSpokenWordForObject,
+  worldActionLabel,
+  type GuidedActionDeps,
+  type GuidedActionOutcome,
+} from './habitat/actions';
 import {
   clearGameFromStorage,
   hatchOffspring,
@@ -152,12 +161,6 @@ const STIMULI = [
   { id: 'objeto:pelota', label: 'Pelota' },
   { id: 'luz:suave', label: 'Luz suave' },
 ] as const;
-
-const OBJECT_STIMULUS_MAP: Partial<Record<WorldObjectId, string>> = {
-  comedero: 'comida',
-  pelota: 'objeto:pelota',
-  'luz-suave': 'luz:suave',
-};
 
 const DRIVE_LABELS: Record<string, string> = {
   hambre: 'Hambre',
@@ -457,55 +460,33 @@ function recordActivity(label: string, detail: string): void {
   }
 }
 
-function recallSpokenWordForObject(objectId: WorldObjectId): string | null {
-  const stimulusId = OBJECT_STIMULUS_MAP[objectId];
-  if (!stimulusId) return null;
-  const entries = vocabulary.recall(stimulusId);
-  const best = entries.find((item) => item.learned) ?? entries[0];
-  if (!best) return null;
-  return best.learned ? `¡«${best.word}»!` : `¿«${best.word}»…?`;
+/** Dependencias DOM-free del camino guiado (la misma lógica en lab y servidor). */
+function guidedDeps(): GuidedActionDeps {
+  return {
+    engine,
+    world,
+    brain,
+    brainModel,
+    actionSpace,
+    getFrame: () => frame,
+    requireProximity: spatialStrict,
+  };
 }
 
-function brainInputs(snapshot: TickResult, tick: number): BrainInputs {
-  return { drives: snapshot.drives, chemicals: snapshot.chemicals, tick };
-}
-
-/** Convierte acciones concretas del hábitat en los cinco hábitos que sí modela el cerebro. */
-function learningCategory(actionId: string): string | null {
-  if (actionId === 'descansar') return 'descansar';
-  if (actionId === 'acurrucarse' || actionId === 'abrazar') return 'acurrucarse';
-  if (actionId === 'observar' || actionId === 'mirar') return 'observar';
-  if (actionId === 'explorar' || actionId === 'atravesar' || actionId === 'tocar') return 'explorar';
-  if (actionId === 'buscar') return 'buscar';
-  return null;
-}
-
-/** Un ejemplo guiado solo enseña si su efecto bioquímico produjo un cambio medible. */
-function learnFromGuidedAction(actionId: string, before: TickResult, after: TickResult): void {
-  const categoryId = learningCategory(actionId);
-  const category = actionSpace.find((action) => action.id === categoryId);
-  if (!category) return;
-  const reward = driveReductionReward(driveDiscomfort(before.drives), driveDiscomfort(after.drives));
-  if (Math.abs(reward) < 0.01) {
-    if (learningLast) learningLast.textContent = `Nilo hizo «${WORLD_ACTION_LABELS[actionId as keyof typeof WORLD_ACTION_LABELS] ?? actionId}», pero sus necesidades apenas cambiaron; todavía no cuenta como aprendizaje.`;
-    return;
+/** Refleja en la interfaz lo que el camino guiado decidió (aprendizaje, refuerzos). */
+function reflectGuidedOutcome(outcome: GuidedActionOutcome): void {
+  if (outcome.learning) {
+    if (learningLast) learningLast.textContent = outcome.learning.status;
+    if (outcome.learning.evaluated) {
+      if (outcome.learning.learned) recordActivity('Aprendizaje', outcome.learning.detail);
+      renderBrain();
+    }
   }
-
-  // Fija el contexto actual como traza y refuerza la categoría de la acción que tú elegiste.
-  brain.think(brainInputs(before, frame));
-  const previousReinforces = brainModel.getDebugState().reinforces;
-  brainModel.reinforce(category.value, reward);
-  const learned = brainModel.getDebugState().reinforces > previousReinforces;
-  const snapshot = engine.tick(0);
-  lastBrainOutput = brain.think(brainInputs(snapshot, frame));
-  const direction = reward > 0 ? 'mejoró' : 'empeoró';
-  const sign = reward > 0 ? '+' : '−';
-  const detail = `Aprendizaje guiado · ${category.name}: ${direction} tras «${WORLD_ACTION_LABELS[actionId as keyof typeof WORLD_ACTION_LABELS] ?? actionId}» (refuerzo ${sign}${Math.abs(reward).toFixed(2)}).`;
-  if (learningLast) learningLast.textContent = learned
-    ? `Aprendió: «${category.name}» ${direction} sus necesidades después de «${WORLD_ACTION_LABELS[actionId as keyof typeof WORLD_ACTION_LABELS] ?? actionId}». Ahora esa preferencia pesa más en un estado parecido.`
-    : 'No se pudo registrar el ejemplo en el cerebro.';
-  if (learned) recordActivity('Aprendizaje', detail);
-  renderBrain();
+  if (outcome.brainOutput) lastBrainOutput = outcome.brainOutput;
+  if (outcome.suppressNextAutoReward) {
+    suppressNextAutoReward = true;
+    if (outcome.previousDiscomfort !== null) previousDiscomfort = outcome.previousDiscomfort;
+  }
 }
 
 function renderGenomePanel(): void {
@@ -819,23 +800,14 @@ function teachWord(event: SubmitEvent): void {
 
 /** Ejecuta una acción contra el mundo (manual o cerebral). */
 function performWorldAction(actionId: string, source: 'brain' | 'manual'): void {
-  const requireProximity = spatialStrict;
-  const interaction = world.performAction(actionId, { requireProximity });
+  const outcome = performGuidedAction(guidedDeps(), actionId, source);
+  const interaction = outcome.interaction;
   lastWorldSource = source;
-  if (interaction.applied && interaction.impulse) {
-    const before = engine.tick(0);
-    engine.applyImpulse(interaction.impulse);
-    const after = engine.tick(0);
-    if (source === 'manual') learnFromGuidedAction(interaction.actionId, before, after);
-    const spoken = recallSpokenWordForObject(interaction.objectId);
-    setSpeech(spoken ?? (interaction.objectId === 'comedero' ? '¡Ñam!' : WORLD_ACTION_LABELS[interaction.actionId]));
+  if (outcome.impulseApplied) {
+    const spoken = recallSpokenWordForObject(vocabulary, interaction.objectId);
+    setSpeech(spoken ?? (interaction.objectId === 'comedero' ? '¡Ñam!' : worldActionLabel(interaction.actionId)));
   }
-
-  // Evita atribuir la intervención guiada al refuerzo automático de la última acción del cerebro.
-  if (source === 'manual' && interaction.applied) {
-    suppressNextAutoReward = true;
-    previousDiscomfort = driveDiscomfort(engine.tick(0).drives);
-  }
+  reflectGuidedOutcome(outcome);
 
   const prefix = source === 'manual' ? 'Actividad guiada' : 'Acción del cerebro';
   const note = '';
@@ -1225,18 +1197,12 @@ function loop(now: number): void {
     if (stepResult.triggeredInteraction) {
       const interaction = stepResult.triggeredInteraction;
       const interactionSource = lastWorldSource;
-      if (interaction.applied && interaction.impulse) {
-        const before = engine.tick(0);
-        engine.applyImpulse(interaction.impulse);
-        const after = engine.tick(0);
-        if (interactionSource === 'manual') learnFromGuidedAction(interaction.actionId, before, after);
-        const spoken = recallSpokenWordForObject(interaction.objectId);
-        setSpeech(spoken ?? WORLD_ACTION_LABELS[interaction.actionId]);
-        if (interactionSource === 'manual') {
-          suppressNextAutoReward = true;
-          previousDiscomfort = driveDiscomfort(after.drives);
-        }
+      const outcome = applyGuidedInteraction(guidedDeps(), interaction, interactionSource);
+      if (outcome.impulseApplied) {
+        const spoken = recallSpokenWordForObject(vocabulary, interaction.objectId);
+        setSpeech(spoken ?? worldActionLabel(interaction.actionId));
       }
+      reflectGuidedOutcome(outcome);
       const prefix = interactionSource === 'manual' ? 'Actividad guiada' : 'Acción del cerebro';
       const note = '';
       worldFeedbackElement.textContent = `${prefix}: ${interaction.message}${note}`;
